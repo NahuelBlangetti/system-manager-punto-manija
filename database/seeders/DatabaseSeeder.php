@@ -16,18 +16,23 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Administrador',
-            'email' => 'admin@puntomanija.com',
-            'password' => 'Puntomanija789',
-            'role' => UserRole::Admin,
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@puntomanija.com'],
+            [
+                'name' => 'Administrador',
+                'password' => 'Puntomanija789',
+                'role' => UserRole::Admin,
+            ],
+        );
 
-        User::factory()->create([
-            'name' => 'Empleado',
-            'email' => 'empleado@puntomanija.com',
-            'role' => UserRole::Empleado,
-        ]);
+        User::updateOrCreate(
+            ['email' => 'empleado@puntomanija.com'],
+            [
+                'name' => 'Empleado',
+                'password' => 'password',
+                'role' => UserRole::Empleado,
+            ],
+        );
 
         $this->call(ProductSeeder::class);
     }
