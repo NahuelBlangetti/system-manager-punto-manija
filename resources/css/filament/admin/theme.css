@@ -1,0 +1,73 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+.carga-rapida-card {
+    overflow: hidden;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 4px 16px rgb(0 0 0 / 0.04);
+    border: 1px solid rgb(0 0 0 / 0.06);
+}
+
+.dark .carga-rapida-card {
+    background: rgb(24 24 27);
+    border-color: rgb(255 255 255 / 0.12);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 0.45);
+}
+
+.carga-rapida-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid rgb(0 0 0 / 0.06);
+}
+
+.dark .carga-rapida-card-header {
+    border-bottom-color: rgb(255 255 255 / 0.08);
+}
+
+.carga-rapida-card-body {
+    padding: 1.75rem;
+}
+
+.carga-rapida-input {
+    height: 3rem;
+    min-height: 3rem;
+    max-height: 3rem;
+    line-height: 1.25;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.carga-rapida-scanner-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .carga-rapida-scanner-row {
+        flex-direction: row;
+        align-items: center;
+    }
+}
+
+.carga-rapida-footer-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.75rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid rgb(0 0 0 / 0.06);
+}
+
+.dark .carga-rapida-footer-row {
+    border-top-color: rgb(255 255 255 / 0.06);
+}
