@@ -20,21 +20,27 @@ class WebOrderForm
         return $schema->components([
 
             Section::make('Cliente y entrega')
-                ->columns(2)
+                ->columns([
+                    'default' => 1,
+                    'md' => 2,
+                ])
                 ->schema([
                     TextInput::make('customer_name')
                         ->label('Cliente')
                         ->disabled(),
                     TextInput::make('customer_phone')
                         ->label('Teléfono')
-                        ->disabled(),
+                        ->disabled()
+                        ->prefixIcon('heroicon-o-phone'),
                     TextInput::make('delivery_type')
                         ->label('Tipo de entrega')
                         ->formatStateUsing(fn (?string $state) => $state === 'delivery' ? 'Envío a domicilio' : 'Retiro en el local')
                         ->disabled(),
                     TextInput::make('address')
                         ->label('Dirección')
-                        ->disabled(),
+                        ->disabled()
+                        ->prefixIcon('heroicon-o-map-pin')
+                        ->columnSpanFull(),
                     TextInput::make('distance_km')
                         ->label('Distancia (km)')
                         ->disabled(),
@@ -52,12 +58,18 @@ class WebOrderForm
                         ->addable(false)
                         ->deletable(false)
                         ->reorderable(false)
-                        ->columns(4)
+                        ->columns([
+                            'default' => 1,
+                            'sm' => 4,
+                        ])
                         ->schema([
                             TextInput::make('product_name')
                                 ->label('Producto')
                                 ->disabled()
-                                ->columnSpan(2),
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'sm' => 2,
+                                ]),
                             TextInput::make('quantity')
                                 ->label('Cantidad')
                                 ->disabled(),
@@ -69,7 +81,10 @@ class WebOrderForm
                 ]),
 
             Section::make('Gestión')
-                ->columns(2)
+                ->columns([
+                    'default' => 1,
+                    'md' => 2,
+                ])
                 ->schema([
                     Select::make('status')
                         ->label('Estado')

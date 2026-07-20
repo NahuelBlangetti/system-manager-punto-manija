@@ -71,3 +71,34 @@
 .dark .carga-rapida-footer-row {
     border-top-color: rgb(255 255 255 / 0.06);
 }
+
+/* Pedidos Web — cards más cómodas en mobile */
+.fi-resource-web-orders .fi-ta-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.fi-resource-web-orders .fi-ta-record {
+    padding: 0.25rem;
+}
+
+@media (max-width: 640px) {
+    .fi-resource-web-orders .fi-ta-actions .fi-btn {
+        flex: 1 1 calc(50% - 0.5rem);
+        justify-content: center;
+    }
+
+    .fi-resource-web-orders .fi-page-header-actions {
+        width: 100%;
+    }
+
+    .fi-resource-web-orders .fi-page-header-actions .fi-ac {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .fi-resource-web-orders .fi-page-header-actions .fi-btn {
+        flex: 1 1 calc(50% - 0.5rem);
+        justify-content: center;
+    }
+}
