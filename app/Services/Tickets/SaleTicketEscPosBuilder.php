@@ -18,9 +18,9 @@ class SaleTicketEscPosBuilder
     private const GS = "\x1D";
 
     private const PAYMENT_LABELS = [
-        'cash'     => 'Efectivo',
+        'cash' => 'Efectivo',
         'transfer' => 'Transferencia',
-        'card'     => 'Tarjeta',
+        'card' => 'Tarjeta',
     ];
 
     public function build(Sale $sale): string

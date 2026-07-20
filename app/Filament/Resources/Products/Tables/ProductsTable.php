@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\Products\Tables;
 
+use App\Enums\ProductDiscountType;
 use App\Filament\Support\BulkActionHelpers;
 use App\Filament\Support\ProductPdfExport;
+use App\Models\Product;
 use App\Models\User;
+use App\Services\Stock\ComboStockService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -15,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +56,17 @@ class ProductsTable
                     ->label('Precio venta')
                     ->formatStateUsing(fn ($state) => '$ '.number_format((float) $state, 2, ',', '.'))
                     ->sortable(),
+                TextColumn::make('discount_min_qty')
+                    ->label('Descuento por cantidad')
+                    ->badge()
+                    ->color('success')
+                    ->toggleable()
+                    ->state(fn (Product $record): ?string => $record->discount_min_qty
+                        ? "{$record->discount_min_qty}+ ".($record->discount_type === ProductDiscountType::Percentage
+                            ? "-{$record->discount_value}%"
+                            : '-$'.number_format((float) $record->discount_value, 2, ',', '.'))
+                        : null)
+                    ->placeholder('—'),
                 TextColumn::make('cost_price')
                     ->label('Precio costo')
                     ->formatStateUsing(fn ($state) => '$ '.number_format((float) $state, 2, ',', '.'))
@@ -62,11 +77,16 @@ class ProductsTable
                     ->label('Stock')
                     ->sortable()
                     ->badge()
+                    ->getStateUsing(fn (Product $record): int => ComboStockService::availableStock($record))
                     ->color(fn (int $state, $record): string => match (true) {
                         $state <= 0 => 'danger',
                         $state <= $record->min_stock => 'warning',
                         default => 'success',
                     }),
+                IconColumn::make('is_combo')
+                    ->label('Combo')
+                    ->boolean()
+                    ->toggleable(),
                 IconColumn::make('active')
                     ->label('Activo')
                     ->boolean(),
@@ -90,6 +110,11 @@ class ProductsTable
                     ->placeholder('Todas las categorías')
                     ->searchable()
                     ->preload(),
+                TernaryFilter::make('is_combo')
+                    ->label('Combo')
+                    ->placeholder('Todos')
+                    ->trueLabel('Solo combos')
+                    ->falseLabel('Solo productos simples'),
                 Filter::make('incomplete')
                     ->label('Sin completar')
                     ->toggle()

@@ -189,7 +189,14 @@
                                             {{ $item['name'] }}
                                         </p>
                                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                                            ${{ number_format($item['unit_price'], 2, ',', '.') }} / {{ $item['unit'] }}
+                                            @if (($item['base_price'] ?? $item['unit_price']) > $item['unit_price'])
+                                                <span class="line-through">${{ number_format($item['base_price'], 2, ',', '.') }}</span>
+                                                <span class="font-medium text-success-600 dark:text-success-400">${{ number_format($item['unit_price'], 2, ',', '.') }}</span>
+                                                / {{ $item['unit'] }}
+                                                <span class="ml-1 rounded bg-success-100 px-1.5 py-0.5 text-[10px] font-semibold text-success-700 dark:bg-success-500/10 dark:text-success-400">Descuento por cantidad</span>
+                                            @else
+                                                ${{ number_format($item['unit_price'], 2, ',', '.') }} / {{ $item['unit'] }}
+                                            @endif
                                         </p>
                                     </div>
                                     <div class="flex items-center gap-1.5 shrink-0">

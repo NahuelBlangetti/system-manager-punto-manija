@@ -44,6 +44,10 @@ return [
         'webhook_url' => env('DISCORD_WEBHOOK_URL'),
     ],
 
+    'google_maps' => [
+        'key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+
     'import' => [
         'max_chunks' => (int) env('IMPORT_MAX_CHUNKS', 25),
         'chunk_size' => (int) env('IMPORT_CHUNK_SIZE', 4000),

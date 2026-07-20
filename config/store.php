@@ -6,6 +6,18 @@ return [
     'address' => env('STORE_ADDRESS', ''),
     'maps_url' => env('STORE_MAPS_URL', ''),
     'instagram' => env('STORE_INSTAGRAM', ''),
+
+    // Valores por defecto / fallback de tarifas de envío. El administrador puede
+    // overridearlos desde /admin/tarifas-envio (tabla settings). Fórmula:
+    // base_price + price_per_km * distancia, redondeado a rounding_step. Más allá de
+    // max_distance_km no se cotiza automático (se coordina por WhatsApp).
+    'shipping' => [
+        'base_price' => (float) env('SHIPPING_BASE_PRICE', 800),
+        'price_per_km' => (float) env('SHIPPING_PRICE_PER_KM', 300),
+        'max_distance_km' => (float) env('SHIPPING_MAX_DISTANCE_KM', 15),
+        'rounding_step' => (float) env('SHIPPING_ROUNDING_STEP', 50),
+    ],
+
     'schedule' => [
         ['label' => 'Lunes a Sábado', 'hours' => env('STORE_HOURS_WEEKDAY', '9:00 - 18:00')],
         ['label' => 'Domingo',         'hours' => env('STORE_HOURS_SUNDAY', 'Cerrado')],

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Pages;
 
 use App\Filament\Resources\Products\ProductResource;
+use App\Filament\Resources\Products\Schemas\ProductForm;
 use App\Filament\Support\ProductImagePath;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
@@ -64,6 +65,6 @@ class EditProduct extends EditRecord
             }
         }
 
-        return $data;
+        return ProductForm::normalizeComboStock($data);
     }
 }

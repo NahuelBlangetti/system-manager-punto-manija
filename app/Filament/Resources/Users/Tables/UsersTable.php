@@ -32,6 +32,7 @@ class UsersTable
                     ->color(fn (UserRole $state): string => match ($state) {
                         UserRole::Admin => 'success',
                         UserRole::Empleado => 'gray',
+                        UserRole::Delivery => 'info',
                     }),
                 IconColumn::make('can_manage_products')
                     ->label('Gestiona productos')

@@ -77,6 +77,13 @@ class CashRegisterResource extends Resource
         return $query;
     }
 
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && ! $user->isDelivery();
+    }
+
     public static function canEdit(Model $record): bool
     {
         $user = Auth::user();

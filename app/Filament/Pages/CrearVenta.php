@@ -7,7 +7,8 @@ use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
-use App\Models\StockMovement;
+use App\Models\User;
+use App\Services\Stock\ComboStockService;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -33,6 +34,13 @@ class CrearVenta extends Page
     protected static ?int $navigationSort = 0;
 
     protected string $view = 'filament.pages.crear-venta';
+
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && ! $user->isDelivery();
+    }
 
     /**
      * @return array<Action>
@@ -137,7 +145,16 @@ class CrearVenta extends Page
             )
             ->orderBy('name')
             ->limit(8)
-            ->get(['id', 'name', 'sale_price', 'stock', 'unit', 'sku', 'barcode'])
+            ->get(['id', 'name', 'sale_price', 'stock', 'unit', 'sku', 'barcode', 'is_combo'])
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sale_price' => $product->sale_price,
+                'stock' => ComboStockService::availableStock($product),
+                'unit' => $product->unit,
+                'sku' => $product->sku,
+                'barcode' => $product->barcode,
+            ])
             ->toArray();
     }
 
@@ -181,10 +198,15 @@ class CrearVenta extends Page
                 return;
             }
 
+            $unitPrice = $product->unitPriceForQuantity($newQty);
+
             $this->cartItems[$existingIndex]['quantity'] = $newQty;
-            $this->cartItems[$existingIndex]['subtotal'] = $newQty * $this->cartItems[$existingIndex]['unit_price'];
+            $this->cartItems[$existingIndex]['unit_price'] = $unitPrice;
+            $this->cartItems[$existingIndex]['subtotal'] = round($newQty * $unitPrice, 2);
         } else {
-            if ($product->stock <= 0) {
+            $availableStock = ComboStockService::availableStock($product);
+
+            if ($availableStock <= 0) {
                 Notification::make()
                     ->title("Sin stock: {$product->name}")
                     ->body('Este producto no tiene unidades disponibles.')
@@ -194,14 +216,17 @@ class CrearVenta extends Page
                 return;
             }
 
+            $unitPrice = $product->unitPriceForQuantity(1);
+
             $this->cartItems[] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'unit' => $product->unit,
-                'unit_price' => (float) $product->sale_price,
+                'base_price' => (float) $product->sale_price,
+                'unit_price' => $unitPrice,
                 'quantity' => 1,
-                'subtotal' => (float) $product->sale_price,
-                'stock' => $product->stock,
+                'subtotal' => $unitPrice,
+                'stock' => $availableStock,
             ];
         }
 
@@ -243,8 +268,12 @@ class CrearVenta extends Page
             return;
         }
 
+        $product = Product::find($this->cartItems[$index]['product_id']);
+        $unitPrice = $product ? $product->unitPriceForQuantity($qty) : $this->cartItems[$index]['unit_price'];
+
         $this->cartItems[$index]['quantity'] = $qty;
-        $this->cartItems[$index]['subtotal'] = $qty * $this->cartItems[$index]['unit_price'];
+        $this->cartItems[$index]['unit_price'] = $unitPrice;
+        $this->cartItems[$index]['subtotal'] = round($qty * $unitPrice, 2);
     }
 
     public function clearCart(): void
@@ -290,10 +319,9 @@ class CrearVenta extends Page
 
                 foreach ($this->cartItems as $item) {
                     $product = Product::lockForUpdate()->find($item['product_id']);
+                    $available = $product ? ComboStockService::availableStock($product) : 0;
 
-                    if (! $product || $product->stock < $item['quantity']) {
-                        $available = $product ? $product->stock : 0;
-
+                    if (! $product || $available < $item['quantity']) {
                         throw new \RuntimeException(
                             "Stock insuficiente para \"{$item['name']}\". ".
                             "Disponible: {$available} {$item['unit']}. ".
@@ -328,20 +356,7 @@ class CrearVenta extends Page
                     ]);
 
                     $product = $products[$item['product_id']];
-                    $stockBefore = $product->stock;
-                    $product->decrement('stock', $item['quantity']);
-
-                    StockMovement::create([
-                        'product_id' => $product->id,
-                        'user_id' => Auth::id(),
-                        'type' => 'out',
-                        'quantity' => $item['quantity'],
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockBefore - $item['quantity'],
-                        'notes' => "Venta {$sale->sale_number}",
-                        'reference_type' => Sale::class,
-                        'reference_id' => $sale->id,
-                    ]);
+                    ComboStockService::deduct($product, $item['quantity'], "Venta {$sale->sale_number}", $sale, Auth::id());
                 }
 
                 $this->lastSaleNumber = $sale->sale_number;

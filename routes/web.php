@@ -2,10 +2,15 @@
 
 use App\Filament\Support\ProductImagePath;
 use App\Http\Controllers\MarketplaceController;
+use App\Http\Controllers\MarketplaceOrderController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
 Route::get('/', [MarketplaceController::class, 'index']);
+
+Route::post('/marketplace/orders', [MarketplaceOrderController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('marketplace.orders.store');
 
 Route::middleware(['web', 'auth'])->get('/admin/files/{path}', function (string $path) {
     $normalized = ProductImagePath::normalize($path);

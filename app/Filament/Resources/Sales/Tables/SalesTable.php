@@ -3,8 +3,7 @@
 namespace App\Filament\Resources\Sales\Tables;
 
 use App\Models\Product;
-use App\Models\Sale;
-use App\Models\StockMovement;
+use App\Services\Stock\ComboStockService;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -104,19 +103,7 @@ class SalesTable
                                                 continue;
                                             }
 
-                                            StockMovement::create([
-                                                'product_id' => $product->id,
-                                                'user_id' => Auth::id(),
-                                                'type' => 'in',
-                                                'quantity' => $item->quantity,
-                                                'stock_before' => $product->stock,
-                                                'stock_after' => $product->stock + $item->quantity,
-                                                'notes' => "Reversión por eliminación de venta {$record->sale_number}",
-                                                'reference_type' => Sale::class,
-                                                'reference_id' => $record->id,
-                                            ]);
-
-                                            $product->increment('stock', $item->quantity);
+                                            ComboStockService::restore($product, $item->quantity, "Reversión por eliminación de venta {$record->sale_number}", $record, Auth::id());
                                         }
                                     }
 

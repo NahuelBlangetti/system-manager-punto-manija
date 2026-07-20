@@ -69,6 +69,13 @@ class ProductResource extends Resource
             ]);
     }
 
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && ! $user->isDelivery();
+    }
+
     public static function canCreate(): bool
     {
         return static::userCanManageProducts();

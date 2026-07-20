@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Sales\Pages;
 use App\Filament\Resources\Sales\SaleResource;
 use App\Models\Product;
 use App\Models\Sale;
-use App\Models\StockMovement;
+use App\Services\Stock\ComboStockService;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -108,19 +108,7 @@ class EditSale extends EditRecord
                 continue;
             }
 
-            StockMovement::create([
-                'product_id' => $product->id,
-                'user_id' => Auth::id(),
-                'type' => 'in',
-                'quantity' => $item->quantity,
-                'stock_before' => $product->stock,
-                'stock_after' => $product->stock + $item->quantity,
-                'notes' => "{$reason} de venta {$sale->sale_number}",
-                'reference_type' => Sale::class,
-                'reference_id' => $sale->id,
-            ]);
-
-            $product->increment('stock', $item->quantity);
+            ComboStockService::restore($product, $item->quantity, "{$reason} de venta {$sale->sale_number}", $sale, Auth::id());
         }
     }
 }

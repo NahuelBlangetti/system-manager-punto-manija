@@ -69,6 +69,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === UserRole::Empleado;
     }
 
+    public function isDelivery(): bool
+    {
+        return $this->role === UserRole::Delivery;
+    }
+
     /**
      * El admin siempre gestiona productos; un empleado, solo si el admin se lo habilitó.
      */

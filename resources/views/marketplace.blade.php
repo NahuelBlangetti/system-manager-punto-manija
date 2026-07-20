@@ -3,12 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Punto Manija — Catálogo</title>
     <link rel="icon" type="image/png" href="{{ asset('images/punto-manija-mascot.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    @if(config('services.google_maps.key'))
+        <script>
+            function onGoogleMapsReady() { window.dispatchEvent(new Event('google-maps-ready')); }
+        </script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&libraries=places&language=es&region=AR&callback=onGoogleMapsReady" defer></script>
+    @endif
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         :root {
@@ -409,13 +416,23 @@
         }
     </style>
 </head>
-<body class="min-h-screen" x-data="cartStore()" x-cloak>
 @php
     $storeDisplayName = 'PUNTO MANIJA';
     $catalog = config('store.catalog', []);
     $showHero = $browsingCategories ?? (! $search && ! $activeCategory);
     $categoryImages = $catalog['category_images'] ?? [];
+    $shippingRates = \App\Services\Shipping\ShippingSettings::all();
+    $shippingConfig = [
+        'basePrice' => $shippingRates['base_price'],
+        'pricePerKm' => $shippingRates['price_per_km'],
+        'maxDistanceKm' => $shippingRates['max_distance_km'],
+        'roundingStep' => $shippingRates['rounding_step'],
+        'hasMapsKey' => (bool) config('services.google_maps.key'),
+        'storeAddress' => config('store.address', ''),
+        'ordersUrl' => route('marketplace.orders.store'),
+    ];
 @endphp
+<body class="min-h-screen" x-data="cartStore(@js($shippingConfig))" x-cloak>
 
 {{-- CART DRAWER --}}
 <div x-show="open" class="fixed inset-0 z-50 flex justify-end" x-cloak>
@@ -480,18 +497,66 @@
         </div>
 
         <div class="border-t-2 border-accent px-5 py-5 space-y-4" x-show="items.length > 0">
+            <div>
+                <label class="font-label text-xs text-on-surface flex items-center gap-2 mb-2">
+                    <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    Entrega
+                </label>
+                <div class="flex gap-2">
+                    <button type="button" x-on:click="deliveryType = 'pickup'"
+                            :class="deliveryType === 'pickup' ? 'filter-chip--active' : ''"
+                            class="filter-chip flex-1 px-3 py-2 text-[11px]">Retiro en el local</button>
+                    <button type="button" x-on:click="deliveryType = 'delivery'"
+                            :class="deliveryType === 'delivery' ? 'filter-chip--active' : ''"
+                            class="filter-chip flex-1 px-3 py-2 text-[11px]">Envío a domicilio</button>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                <input type="text" x-model="customerName" x-on:input="save()" placeholder="Tu nombre"
+                       class="pm-input w-full px-3 py-2.5 text-sm">
+                <input type="tel" x-model="customerPhone" x-on:input="save()" placeholder="Tu teléfono"
+                       class="pm-input w-full px-3 py-2.5 text-sm">
+            </div>
+
+            <template x-if="deliveryType === 'delivery'">
+                <div class="space-y-2">
+                    <input type="text" x-ref="addressInput" x-model="address"
+                           x-on:input="onAddressTyped()"
+                           x-init="$nextTick(() => initAutocomplete($el))"
+                           x-on:google-maps-ready.window="initAutocomplete($refs.addressInput)"
+                           placeholder="Tu dirección (calle y altura)"
+                           class="pm-input w-full px-3 py-2.5 text-sm">
+                    <p class="text-[11px] text-muted" x-show="!shippingConfig.hasMapsKey">
+                        Escribí tu dirección — coordinamos el costo de envío por WhatsApp.
+                    </p>
+                    <p class="text-[11px] text-muted" x-show="quoting">Calculando distancia…</p>
+                    <p class="text-[11px] text-on-surface" x-show="!quoting && distanceKm !== null && !outOfRange">
+                        📍 <span x-text="(distanceKm ?? 0).toFixed(1)"></span> km del local — Envío:
+                        <span class="font-semibold" x-text="'$' + formatPrice(shippingCost)"></span>
+                    </p>
+                    <p class="text-[11px] text-tertiary" x-show="!quoting && shippingConfig.hasMapsKey && outOfRange && address">
+                        Envío a coordinar por WhatsApp (fuera de zona automática o dirección sin confirmar del listado).
+                    </p>
+                </div>
+            </template>
+
+            <p class="text-[11px] text-error" x-show="errorMessage" x-text="errorMessage"></p>
+
             <div class="flex justify-between font-headline text-lg uppercase">
                 <span>Total estimado</span>
                 <span class="text-primary" x-text="'$' + formatPrice(total)"></span>
             </div>
-            <a :href="whatsappUrl()" target="_blank"
+            <button type="button" x-on:click="confirmOrder()" :disabled="submitting"
                class="pm-btn-primary flex items-center justify-center gap-2 w-full py-3.5 text-sm">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                     <path d="M12 0C5.373 0 0 5.373 0 12c0 2.091.539 4.057 1.484 5.77L.057 23.273a.75.75 0 00.92.92l5.503-1.427A11.956 11.956 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22.007a10.01 10.01 0 01-5.104-1.399l-.366-.217-3.793.984.999-3.707-.237-.381A9.989 9.989 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10.007-10 10.007z"/>
                 </svg>
-                Pedir por WhatsApp
-            </a>
+                <span x-text="submitting ? 'Enviando…' : 'Confirmar pedido y continuar a WhatsApp'"></span>
+            </button>
             <button x-on:click="clear()" class="w-full text-xs text-muted hover:text-error font-label">
                 Vaciar carrito
             </button>
@@ -876,17 +941,36 @@
 </button>
 
 <script>
-function cartStore() {
+function cartStore(shippingConfig) {
+    const savedCustomer = JSON.parse(localStorage.getItem('punto_manija_customer') || '{}');
+
     return {
         open: false,
         items: JSON.parse(localStorage.getItem('punto_manija_cart') || '[]'),
+        shippingConfig: shippingConfig || {},
+
+        deliveryType: savedCustomer.deliveryType || 'delivery',
+        customerName: savedCustomer.customerName || '',
+        customerPhone: savedCustomer.customerPhone || '',
+        address: '',
+        lat: null,
+        lng: null,
+        distanceKm: null,
+        shippingCost: null,
+        outOfRange: false,
+        quoting: false,
+        submitting: false,
+        errorMessage: '',
+        autocompleteInitialized: false,
 
         get itemCount() {
             return this.items.reduce((sum, i) => sum + i.qty, 0);
         },
 
         get total() {
-            return this.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+            const subtotal = this.items.reduce((sum, i) => sum + i.price * i.qty, 0);
+            const shipping = this.deliveryType === 'delivery' ? (this.shippingCost || 0) : 0;
+            return subtotal + shipping;
         },
 
         add(product) {
@@ -920,27 +1004,151 @@ function cartStore() {
 
         clear() {
             this.items = [];
+            this.address = '';
+            this.lat = null;
+            this.lng = null;
+            this.distanceKm = null;
+            this.shippingCost = null;
+            this.outOfRange = false;
+            this.errorMessage = '';
             this.save();
         },
 
         save() {
             localStorage.setItem('punto_manija_cart', JSON.stringify(this.items));
+            localStorage.setItem('punto_manija_customer', JSON.stringify({
+                deliveryType: this.deliveryType,
+                customerName: this.customerName,
+                customerPhone: this.customerPhone,
+            }));
         },
 
         formatPrice(value) {
             return Math.round(value).toLocaleString('es-AR');
         },
 
-        whatsappUrl() {
-            const waNumber = '{{ config("store.whatsapp") }}';
-            if (!this.items.length || !waNumber) return '#';
-            let msg = 'Hola *{{ $storeDisplayName }}*! 👋 Me gustaría hacer el siguiente pedido:\n\n';
-            this.items.forEach(item => {
-                msg += `• ${item.name} (x${item.qty}) — $${this.formatPrice(item.price * item.qty)}\n`;
+        initAutocomplete(inputEl) {
+            if (this.autocompleteInitialized || typeof google === 'undefined' || !google.maps || !google.maps.places || !inputEl) {
+                return;
+            }
+            this.autocompleteInitialized = true;
+
+            const autocomplete = new google.maps.places.Autocomplete(inputEl, {
+                componentRestrictions: { country: 'ar' },
+                fields: ['formatted_address', 'geometry'],
             });
-            msg += `\n💰 *Total estimado: $${this.formatPrice(this.total)}*`;
-            msg += '\n\n¿Podría confirmar disponibilidad? ¡Muchas gracias!';
-            return 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(msg);
+
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry) return;
+                this.address = place.formatted_address;
+                this.lat = place.geometry.location.lat();
+                this.lng = place.geometry.location.lng();
+                this.computeShipping();
+            });
+        },
+
+        onAddressTyped() {
+            this.lat = null;
+            this.lng = null;
+            this.distanceKm = null;
+            this.shippingCost = null;
+            this.outOfRange = true;
+        },
+
+        priceForDistance(km) {
+            if (km === null || km > this.shippingConfig.maxDistanceKm) {
+                return { cost: null, outOfRange: true };
+            }
+            const raw = this.shippingConfig.basePrice + this.shippingConfig.pricePerKm * km;
+            const step = this.shippingConfig.roundingStep || 1;
+            return { cost: Math.round(raw / step) * step, outOfRange: false };
+        },
+
+        computeShipping() {
+            if (this.lat === null || this.lng === null || !this.shippingConfig.storeAddress || typeof google === 'undefined' || !google.maps) {
+                this.distanceKm = null;
+                this.shippingCost = null;
+                this.outOfRange = true;
+                return;
+            }
+
+            this.quoting = true;
+            new google.maps.DistanceMatrixService().getDistanceMatrix({
+                origins: [this.shippingConfig.storeAddress],
+                destinations: [{ lat: this.lat, lng: this.lng }],
+                travelMode: 'DRIVING',
+                unitSystem: google.maps.UnitSystem.METRIC,
+            }, (response, status) => {
+                this.quoting = false;
+                const element = status === 'OK' ? response?.rows?.[0]?.elements?.[0] : null;
+
+                if (!element || element.status !== 'OK') {
+                    this.distanceKm = null;
+                    this.shippingCost = null;
+                    this.outOfRange = true;
+                    return;
+                }
+
+                this.distanceKm = element.distance.value / 1000;
+                const quote = this.priceForDistance(this.distanceKm);
+                this.shippingCost = quote.cost;
+                this.outOfRange = quote.outOfRange;
+            });
+        },
+
+        async confirmOrder() {
+            this.errorMessage = '';
+
+            if (!this.items.length) return;
+
+            if (!this.customerName || !this.customerPhone) {
+                this.errorMessage = 'Completá tu nombre y teléfono.';
+                return;
+            }
+
+            if (this.deliveryType === 'delivery' && !this.address) {
+                this.errorMessage = 'Completá tu dirección para el envío.';
+                return;
+            }
+
+            this.submitting = true;
+
+            try {
+                const response = await fetch(this.shippingConfig.ordersUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        customer_name: this.customerName,
+                        customer_phone: this.customerPhone,
+                        delivery_type: this.deliveryType,
+                        address: this.deliveryType === 'delivery' ? this.address : null,
+                        lat: this.deliveryType === 'delivery' ? this.lat : null,
+                        lng: this.deliveryType === 'delivery' ? this.lng : null,
+                        distance_km: this.deliveryType === 'delivery' ? this.distanceKm : null,
+                        items: this.items.map(i => ({ id: i.id, qty: i.qty })),
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    this.errorMessage = data.message || 'No pudimos procesar el pedido, intentá de nuevo.';
+                    return;
+                }
+
+                window.open(data.whatsapp_url, '_blank');
+                this.clear();
+                this.open = false;
+            } catch (e) {
+                this.errorMessage = 'Error de conexión, intentá de nuevo.';
+            } finally {
+                this.submitting = false;
+            }
         },
     };
 }
