@@ -53,7 +53,9 @@ class SaleTicketEscPosBuilder
         $ticket .= 'Medio de pago: '.(self::PAYMENT_LABELS[$sale->payment_method] ?? $sale->payment_method)."\n";
         $ticket .= "\n";
         $ticket .= $this->centered('¡Gracias por su compra!');
-        $ticket .= "\n\n\n";
+        $ticket .= "\n";
+        $ticket .= $this->centered('Comprobante no válido como factura');
+        $ticket .= "\n\n";
         $ticket .= self::GS.'V'.chr(0); // Corte de papel
 
         return $ticket;
