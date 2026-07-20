@@ -4,10 +4,8 @@
     por usuario ni servidor, ya que el agente corre en la máquina del
     cliente, no en Laravel.
 
-    El agente ya sugiere cuál impresora es probablemente de tickets
-    (guessed_type, ver app/services/printer_classifier.py en print-agent) -
-    este modal preselecciona esa sugerencia, pero deja elegir cualquier
-    otra de la lista completa por si el heurístico se equivoca.
+    Tickets de venta y etiquetas de código de barras usan la misma
+    impresora térmica ESC/POS (ya no hay Zebra/ZPL en este proyecto).
 --}}
 <div
     x-data="{
@@ -43,6 +41,9 @@
         save() {
             localStorage.setItem('print_agent_url', this.agentUrl);
             localStorage.setItem('ticket_printer_name', this.printerName);
+            // Limpia claves viejas de cuando se usaba Zebra/ZPL.
+            localStorage.removeItem('zebra_printer_name');
+            localStorage.removeItem('zebra_print_agent_url');
             new FilamentNotification()
                 .title('Impresora guardada en este navegador')
                 .success()
@@ -95,7 +96,7 @@
         </template>
 
         <template x-if="!loading && !error && printerName && printers.length > 0">
-            <p class="mt-1 text-xs text-gray-400">Detectada automáticamente. Cambiala acá si no es la correcta.</p>
+            <p class="mt-1 text-xs text-gray-400">Tiene que ser la térmica de tickets (ESC/POS), no una Zebra.</p>
         </template>
 
         <template x-if="!loading && !error && printers.length === 0">

@@ -13,7 +13,7 @@ class ConfigurePrinterAction
             ->icon('heroicon-o-printer')
             ->color('gray')
             ->modalHeading('Configurar impresora de tickets')
-            ->modalDescription('Se guarda solo en este navegador. Cada PC con el agente de impresión instalado debe elegir su propia impresora.')
+            ->modalDescription('Se guarda solo en este navegador. Elegí la impresora térmica de tickets (no la Zebra).')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Cerrar')
             ->modalWidth('md')
