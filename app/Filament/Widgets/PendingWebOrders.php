@@ -3,11 +3,13 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\WebOrders\WebOrderResource;
+use App\Models\User;
 use App\Models\WebOrder;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Facades\Auth;
 
 class PendingWebOrders extends TableWidget
 {
@@ -16,6 +18,13 @@ class PendingWebOrders extends TableWidget
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 3;
+
+    public static function canView(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && ! $user->isDelivery();
+    }
 
     public function table(Table $table): Table
     {

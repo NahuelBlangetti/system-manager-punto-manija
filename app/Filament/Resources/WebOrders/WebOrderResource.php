@@ -6,6 +6,7 @@ use App\Filament\Resources\WebOrders\Pages\EditWebOrder;
 use App\Filament\Resources\WebOrders\Pages\ListWebOrders;
 use App\Filament\Resources\WebOrders\Schemas\WebOrderForm;
 use App\Filament\Resources\WebOrders\Tables\WebOrdersTable;
+use App\Models\User;
 use App\Models\WebOrder;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -13,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class WebOrderResource extends Resource
 {
@@ -28,7 +30,7 @@ class WebOrderResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Operaciones';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     public static function form(Schema $schema): Schema
     {
@@ -53,6 +55,13 @@ class WebOrderResource extends Resource
             'index' => ListWebOrders::route('/'),
             'edit' => EditWebOrder::route('/{record}/edit'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User;
     }
 
     public static function canCreate(): bool

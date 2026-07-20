@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ProductDiscountType;
 use App\Filament\Actions\ConfigurePrinterAction;
 use App\Models\CashRegister;
 use App\Models\Product;
@@ -62,11 +63,41 @@ class CrearVenta extends Page
 
     public string $notes = '';
 
+    public string $discountType = 'fixed';
+
+    public string $discountValue = '';
+
     public ?string $lastSaleNumber = null;
 
     public function getSubtotal(): float
     {
         return collect($this->cartItems)->sum('subtotal');
+    }
+
+    public function getDiscountAmount(): float
+    {
+        if (! Auth::user()?->isAdmin()) {
+            return 0.0;
+        }
+
+        $value = (float) $this->discountValue;
+
+        if ($value <= 0) {
+            return 0.0;
+        }
+
+        $subtotal = $this->getSubtotal();
+
+        $amount = $this->discountType === ProductDiscountType::Percentage->value
+            ? $subtotal * ($value / 100)
+            : $value;
+
+        return round(min(max($amount, 0), $subtotal), 2);
+    }
+
+    public function getTotal(): float
+    {
+        return round($this->getSubtotal() - $this->getDiscountAmount(), 2);
     }
 
     public function getCartCount(): int
@@ -281,6 +312,8 @@ class CrearVenta extends Page
         $this->cartItems = [];
         $this->paymentMethod = '';
         $this->notes = '';
+        $this->discountType = 'fixed';
+        $this->discountValue = '';
         $this->lastSaleNumber = null;
     }
 
@@ -333,14 +366,15 @@ class CrearVenta extends Page
                 }
 
                 $subtotal = $this->getSubtotal();
+                $discountAmount = $this->getDiscountAmount();
 
                 $sale = Sale::create([
                     'user_id' => Auth::id(),
                     'cash_register_id' => $cashRegister->id,
                     'payment_method' => $this->paymentMethod,
                     'subtotal' => $subtotal,
-                    'discount' => 0,
-                    'total' => $subtotal,
+                    'discount' => $discountAmount,
+                    'total' => round($subtotal - $discountAmount, 2),
                     'notes' => $this->notes,
                     'status' => 'completed',
                 ]);
@@ -374,6 +408,8 @@ class CrearVenta extends Page
         $this->cartItems = [];
         $this->paymentMethod = '';
         $this->notes = '';
+        $this->discountType = 'fixed';
+        $this->discountValue = '';
 
         $ticket = app(SaleTicketEscPosBuilder::class)->build($sale);
         $this->dispatch('print-escpos-ticket', content: $ticket);

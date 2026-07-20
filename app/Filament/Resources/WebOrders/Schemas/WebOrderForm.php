@@ -2,17 +2,21 @@
 
 namespace App\Filament\Resources\WebOrders\Schemas;
 
+use App\Models\User;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class WebOrderForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $isDelivery = Auth::user() instanceof User && Auth::user()->isDelivery();
+
         return $schema->components([
 
             Section::make('Cliente y entrega')
@@ -75,6 +79,8 @@ class WebOrderForm
                             'delivered' => 'Entregado',
                             'cancelled' => 'Cancelado',
                         ])
+                        ->disabled($isDelivery)
+                        ->dehydrated(! $isDelivery)
                         ->required(),
                     TextInput::make('total')
                         ->label('Total')
@@ -83,6 +89,8 @@ class WebOrderForm
                     Textarea::make('notes')
                         ->label('Notas internas')
                         ->rows(2)
+                        ->disabled($isDelivery)
+                        ->dehydrated(! $isDelivery)
                         ->columnSpanFull(),
                 ]),
         ]);

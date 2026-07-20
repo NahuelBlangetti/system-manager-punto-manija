@@ -46,6 +46,17 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the user is a delivery driver.
+     */
+    public function delivery(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Delivery,
+            'can_manage_products' => false,
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

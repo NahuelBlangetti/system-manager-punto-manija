@@ -7,6 +7,11 @@ return [
     'maps_url' => env('STORE_MAPS_URL', ''),
     'instagram' => env('STORE_INSTAGRAM', ''),
 
+    // Coordenadas del local (bias del autocomplete de direcciones + referencia).
+    // Default: Av. Fuerza Aérea 3423, Córdoba.
+    'lat' => filled(env('STORE_LAT')) ? (float) env('STORE_LAT') : -31.4128,
+    'lng' => filled(env('STORE_LNG')) ? (float) env('STORE_LNG') : -64.2705,
+
     // Valores por defecto / fallback de tarifas de envío. El administrador puede
     // overridearlos desde /admin/tarifas-envio (tabla settings). Fórmula:
     // base_price + price_per_km * distancia, redondeado a rounding_step. Más allá de

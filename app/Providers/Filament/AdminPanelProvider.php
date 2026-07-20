@@ -3,10 +3,12 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\WebOrders\WebOrderResource;
 use App\Filament\Widgets\LatestSales;
 use App\Filament\Widgets\StatsOverview;
 use App\Filament\Widgets\StockAlerts;
 use App\Filament\Widgets\TopProducts;
+use App\Models\User;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -20,6 +22,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -39,6 +42,15 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Pink,
             ])
+            ->homeUrl(function (): string {
+                $user = Auth::user();
+
+                if ($user instanceof User && $user->isDelivery()) {
+                    return WebOrderResource::getUrl();
+                }
+
+                return Dashboard::getUrl();
+            })
             ->databaseNotifications()
             ->renderHook(
                 PanelsRenderHook::BODY_END,

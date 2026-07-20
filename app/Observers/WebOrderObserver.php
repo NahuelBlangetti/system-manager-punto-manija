@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\UserRole;
 use App\Filament\Resources\WebOrders\WebOrderResource;
 use App\Models\User;
 use App\Models\WebOrder;
@@ -21,13 +22,19 @@ class WebOrderObserver
             ->url(WebOrderResource::getUrl('edit', ['record' => $webOrder]))
             ->button();
 
-        User::all()->each(function (User $user) use ($body, $action) {
-            Notification::make()
-                ->title('Nuevo pedido web')
-                ->body($body)
-                ->actions([$action])
-                ->success()
-                ->sendToDatabase($user);
-        });
+        User::query()
+            ->whereIn('role', [
+                UserRole::Admin->value,
+                UserRole::Empleado->value,
+                UserRole::Delivery->value,
+            ])
+            ->each(function (User $user) use ($body, $action) {
+                Notification::make()
+                    ->title('Nuevo pedido web')
+                    ->body($body)
+                    ->actions([$action])
+                    ->success()
+                    ->sendToDatabase($user);
+            });
     }
 }

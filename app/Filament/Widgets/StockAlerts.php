@@ -3,10 +3,12 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Product;
+use App\Models\User;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Facades\Auth;
 
 class StockAlerts extends TableWidget
 {
@@ -20,6 +22,12 @@ class StockAlerts extends TableWidget
 
     public static function canView(): bool
     {
+        $user = Auth::user();
+
+        if (! $user instanceof User || $user->isDelivery()) {
+            return false;
+        }
+
         return Product::where('active', true)
             ->whereColumn('stock', '<=', 'min_stock')
             ->where('min_stock', '>', 0)

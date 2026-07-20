@@ -14,6 +14,18 @@ class Dashboard extends BaseDashboard
 
     protected static ?string $title = 'Punto Manija';
 
+    public static function canAccess(): bool
+    {
+        return true;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        $user = Auth::user();
+
+        return ! ($user instanceof User && $user->isDelivery());
+    }
+
     public function mount(): void
     {
         $user = Auth::user();
@@ -25,6 +37,12 @@ class Dashboard extends BaseDashboard
 
     protected function getHeaderActions(): array
     {
+        $user = Auth::user();
+
+        if ($user instanceof User && $user->isDelivery()) {
+            return [];
+        }
+
         return [
             Action::make('nueva_venta')
                 ->label('Nueva Venta')

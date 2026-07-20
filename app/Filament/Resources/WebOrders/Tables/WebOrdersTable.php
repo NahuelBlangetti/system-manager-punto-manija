@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\WebOrders\Tables;
 
+use App\Models\User;
 use App\Models\WebOrder;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class WebOrdersTable
 {
@@ -95,7 +97,7 @@ class WebOrdersTable
                     ->label('Confirmar')
                     ->color('info')
                     ->icon('heroicon-o-check')
-                    ->visible(fn (WebOrder $record) => $record->status === 'pending')
+                    ->visible(fn (WebOrder $record) => $record->status === 'pending' && ! static::isDeliveryUser())
                     ->action(fn (WebOrder $record) => $record->update(['status' => 'confirmed'])),
                 Action::make('entregado')
                     ->label('Marcar entregado')
@@ -108,9 +110,16 @@ class WebOrdersTable
                     ->color('danger')
                     ->icon('heroicon-o-x-mark')
                     ->requiresConfirmation()
-                    ->visible(fn (WebOrder $record) => in_array($record->status, ['pending', 'confirmed'], true))
+                    ->visible(fn (WebOrder $record) => in_array($record->status, ['pending', 'confirmed'], true) && ! static::isDeliveryUser())
                     ->action(fn (WebOrder $record) => $record->update(['status' => 'cancelled'])),
                 EditAction::make(),
             ]);
+    }
+
+    protected static function isDeliveryUser(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->isDelivery();
     }
 }

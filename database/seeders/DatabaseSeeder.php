@@ -29,8 +29,18 @@ class DatabaseSeeder extends Seeder
             ['email' => 'empleado@puntomanija.com'],
             [
                 'name' => 'Empleado',
-                'password' => 'password',
+                'password' => 'Empleadomanija',
                 'role' => UserRole::Empleado,
+            ],
+        );
+
+        User::updateOrCreate(
+            ['email' => 'delivery@puntomanija.com'],
+            [
+                'name' => 'Delivery',
+                'password' => 'Deliverymanija',
+                'role' => UserRole::Delivery,
+                'can_manage_products' => false,
             ],
         );
 

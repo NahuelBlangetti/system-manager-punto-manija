@@ -32,11 +32,20 @@ class UserForm
                     ->options(collect(UserRole::cases())->mapWithKeys(fn (UserRole $role) => [$role->value => $role->getLabel()]))
                     ->default(UserRole::Empleado->value)
                     ->live()
-                    ->required(),
+                    ->required()
+                    ->helperText(fn (Get $get): ?string => match ($get('role')) {
+                        UserRole::Delivery->value => 'Solo puede ver y gestionar Pedidos Web (confirmar / entregar envíos).',
+                        UserRole::Empleado->value => 'Acceso a ventas, caja y catálogo (productos solo si se habilita abajo).',
+                        UserRole::Admin->value => 'Acceso total al panel.',
+                        default => null,
+                    }),
                 Toggle::make('can_manage_products')
                     ->label('Puede gestionar productos')
                     ->helperText('Permite al empleado crear, editar y cargar productos (incluida la importación por PDF). Los administradores ya tienen este acceso.')
                     ->visible(fn (Get $get): bool => $get('role') === UserRole::Empleado->value)
+                    ->dehydrateStateUsing(fn (?bool $state, Get $get): bool => $get('role') === UserRole::Empleado->value
+                        ? (bool) $state
+                        : false)
                     ->default(false)
                     ->columnSpanFull(),
                 TextInput::make('password')

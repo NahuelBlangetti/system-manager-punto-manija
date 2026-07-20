@@ -99,6 +99,52 @@
             box-shadow: var(--shadow-sm);
         }
 
+        /* Google Places autocomplete — dark theme + encima del drawer */
+        .pac-container {
+            z-index: 10000 !important;
+            background: var(--surface-container);
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            margin-top: 0.35rem;
+            font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+            color: var(--on-surface);
+            padding: 0.25rem 0;
+        }
+        .pac-container:after {
+            display: none;
+        }
+        .pac-item {
+            border-top: 1px solid color-mix(in srgb, var(--outline) 45%, transparent);
+            color: var(--on-surface-variant);
+            padding: 0.65rem 0.9rem;
+            line-height: 1.35;
+            cursor: pointer;
+        }
+        .pac-item:first-child {
+            border-top: none;
+        }
+        .pac-item:hover,
+        .pac-item-selected,
+        .pac-item-selected:hover {
+            background: var(--surface-container-low);
+        }
+        .pac-item-query {
+            color: var(--on-surface);
+            font-size: 0.9rem;
+        }
+        .pac-matched {
+            color: var(--primary-bright);
+            font-weight: 600;
+        }
+        .pac-icon {
+            display: none;
+        }
+        .pac-item span:not(.pac-item-query):not(.pac-matched) {
+            color: var(--outline);
+            font-size: 0.75rem;
+        }
+
         .pm-btn-primary {
             background: var(--primary);
             color: #fff;
@@ -429,6 +475,8 @@
         'roundingStep' => $shippingRates['rounding_step'],
         'hasMapsKey' => (bool) config('services.google_maps.key'),
         'storeAddress' => config('store.address', ''),
+        'storeLat' => (float) config('store.lat'),
+        'storeLng' => (float) config('store.lng'),
         'ordersUrl' => route('marketplace.orders.store'),
     ];
 @endphp
@@ -1033,10 +1081,25 @@ function cartStore(shippingConfig) {
             }
             this.autocompleteInitialized = true;
 
-            const autocomplete = new google.maps.places.Autocomplete(inputEl, {
+            const options = {
                 componentRestrictions: { country: 'ar' },
+                types: ['address'],
                 fields: ['formatted_address', 'geometry'],
-            });
+            };
+
+            const lat = Number(this.shippingConfig.storeLat);
+            const lng = Number(this.shippingConfig.storeLng);
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                // ~0.18° ≈ 20 km: prioriza Córdoba / zona de cobertura sin bloquear otras ciudades.
+                const delta = 0.18;
+                options.bounds = new google.maps.LatLngBounds(
+                    { lat: lat - delta, lng: lng - delta },
+                    { lat: lat + delta, lng: lng + delta },
+                );
+                options.strictBounds = false;
+            }
+
+            const autocomplete = new google.maps.places.Autocomplete(inputEl, options);
 
             autocomplete.addListener('place_changed', () => {
                 const place = autocomplete.getPlace();

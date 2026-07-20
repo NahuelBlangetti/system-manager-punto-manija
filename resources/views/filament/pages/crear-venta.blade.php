@@ -230,11 +230,62 @@
                             @endforeach
                         </div>
 
-                        <div class="mt-4 rounded-lg bg-gray-50 dark:bg-white/5 px-4 py-3">
-                            <div class="flex items-center justify-between">
+                        <div class="mt-4 rounded-lg bg-gray-50 dark:bg-white/5 px-4 py-3 space-y-3">
+                            @if (auth()->user()?->isAdmin())
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Subtotal</span>
+                                    <span class="text-base font-semibold text-gray-900 dark:text-white">
+                                        ${{ number_format($this->getSubtotal(), 2, ',', '.') }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Descuento</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <button
+                                            wire:click="$set('discountType', 'fixed')"
+                                            type="button"
+                                            @class([
+                                                'rounded-md border px-2 py-1 text-xs font-semibold transition',
+                                                'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300' => $discountType === 'fixed',
+                                                'border-gray-300 bg-white text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400' => $discountType !== 'fixed',
+                                            ])
+                                        >$</button>
+                                        <button
+                                            wire:click="$set('discountType', 'percentage')"
+                                            type="button"
+                                            @class([
+                                                'rounded-md border px-2 py-1 text-xs font-semibold transition',
+                                                'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300' => $discountType === 'percentage',
+                                                'border-gray-300 bg-white text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400' => $discountType !== 'percentage',
+                                            ])
+                                        >%</button>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            @if ($discountType === 'percentage') max="100" @endif
+                                            wire:model.live.debounce.400ms="discountValue"
+                                            placeholder="0"
+                                            class="fi-input w-20 rounded-md border border-gray-300 bg-white px-2 py-1 text-right text-sm text-gray-900 shadow-sm dark:border-white/20 dark:bg-white/5 dark:text-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                @if ($this->getDiscountAmount() > 0)
+                                    <div class="flex items-center justify-between text-success-600 dark:text-success-400">
+                                        <span class="text-sm font-medium">Descuento aplicado</span>
+                                        <span class="text-sm font-semibold">
+                                            − ${{ number_format($this->getDiscountAmount(), 2, ',', '.') }}
+                                        </span>
+                                    </div>
+                                @endif
+                            @endif
+
+                            <div class="flex items-center justify-between {{ auth()->user()?->isAdmin() ? 'border-t border-gray-200 pt-2 dark:border-white/10' : '' }}">
                                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Total</span>
                                 <span class="text-xl font-bold text-gray-900 dark:text-white">
-                                    ${{ number_format($this->getSubtotal(), 2, ',', '.') }}
+                                    ${{ number_format($this->getTotal(), 2, ',', '.') }}
                                 </span>
                             </div>
                         </div>
@@ -317,7 +368,7 @@
                             <span wire:loading.remove wire:target="confirmSale">
                                 <span class="flex items-center justify-center gap-2">
                                     <x-filament::icon icon="heroicon-o-check-circle" class="h-5 w-5" />
-                                    Confirmar venta · ${{ number_format($this->getSubtotal(), 2, ',', '.') }}
+                                    Confirmar venta · ${{ number_format($this->getTotal(), 2, ',', '.') }}
                                 </span>
                             </span>
                             <span wire:loading wire:target="confirmSale">
