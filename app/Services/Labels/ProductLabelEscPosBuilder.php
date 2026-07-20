@@ -183,11 +183,14 @@ class ProductLabelEscPosBuilder
     {
         $digits = preg_replace('/\D+/', '', $rawCode) ?? '';
 
-        if (strlen($digits) === 13 && $this->isValidEan13($digits)) {
+        // 13 dígitos → EAN-13 aunque el dígito verificador del catálogo no
+        // cierre (pasa en imports). Si lo mandáramos como CODE39, en 58 mm
+        // las barras se funden y el ticket queda ilegible.
+        if (strlen($digits) === 13 && ctype_digit($digits)) {
             return $this->ean13Modules($digits);
         }
 
-        if (strlen($digits) === 12) {
+        if (strlen($digits) === 12 && ctype_digit($digits)) {
             return $this->ean13Modules($digits.$this->ean13CheckDigit($digits));
         }
 
@@ -340,15 +343,6 @@ class ProductLabelEscPosBuilder
         }
 
         return $modules;
-    }
-
-    private function isValidEan13(string $code): bool
-    {
-        if (! ctype_digit($code) || strlen($code) !== 13) {
-            return false;
-        }
-
-        return $code[12] === $this->ean13CheckDigit(substr($code, 0, 12));
     }
 
     private function ean13CheckDigit(string $twelve): string

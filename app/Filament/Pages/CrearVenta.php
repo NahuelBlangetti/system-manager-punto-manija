@@ -11,6 +11,7 @@ use App\Models\SaleItem;
 use App\Models\User;
 use App\Services\Stock\ComboStockService;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
+use App\Support\EscPosPrint;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -412,7 +413,7 @@ class CrearVenta extends Page
         $this->discountValue = '';
 
         $ticket = app(SaleTicketEscPosBuilder::class)->build($sale);
-        $this->dispatch('print-escpos-ticket', content: $ticket);
+        EscPosPrint::dispatch($this, $ticket);
 
         Notification::make()
             ->title("¡Venta {$this->lastSaleNumber} registrada!")

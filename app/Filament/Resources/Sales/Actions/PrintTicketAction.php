@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Sales\Actions;
 
 use App\Models\Sale;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
+use App\Support\EscPosPrint;
 use Filament\Actions\Action;
 use Filament\Tables\Contracts\HasTable;
 
@@ -19,7 +20,7 @@ class PrintTicketAction
             ->action(function (Sale $record, HasTable $livewire): void {
                 $ticket = app(SaleTicketEscPosBuilder::class)->build($record);
 
-                $livewire->dispatch('print-escpos-ticket', content: $ticket);
+                EscPosPrint::dispatch($livewire, $ticket);
             });
     }
 }

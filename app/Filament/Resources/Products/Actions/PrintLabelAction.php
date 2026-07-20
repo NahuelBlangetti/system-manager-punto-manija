@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Products\Actions;
 
 use App\Models\Product;
 use App\Services\Labels\ProductLabelEscPosBuilder;
+use App\Support\EscPosPrint;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\TextInput;
@@ -40,7 +41,7 @@ class PrintLabelAction
             ->action(function (Product $record, array $data, HasTable $livewire): void {
                 $ticket = app(ProductLabelEscPosBuilder::class)->build($record, (int) $data['copies']);
 
-                $livewire->dispatch('print-escpos-ticket', content: $ticket);
+                EscPosPrint::dispatch($livewire, $ticket);
             });
     }
 
@@ -93,7 +94,7 @@ class PrintLabelAction
                     return;
                 }
 
-                $livewire->dispatch('print-escpos-ticket', content: $ticket);
+                EscPosPrint::dispatch($livewire, $ticket);
 
                 if ($withoutBarcodeCount > 0) {
                     Notification::make()
