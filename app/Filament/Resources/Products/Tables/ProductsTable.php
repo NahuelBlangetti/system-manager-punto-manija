@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Products\Tables;
 
 use App\Enums\ProductDiscountType;
+use App\Filament\Resources\Products\Actions\PrintLabelAction;
 use App\Filament\Support\BulkActionHelpers;
 use App\Filament\Support\ProductPdfExport;
 use App\Models\Product;
@@ -142,6 +143,7 @@ class ProductsTable
             ->deferFilters(false)
             ->hiddenFilterIndicators()
             ->recordActions([
+                PrintLabelAction::make(),
                 EditAction::make()
                     ->visible(fn () => static::userCanManageProducts()),
             ])
@@ -170,6 +172,7 @@ class ProductsTable
                     ])
                     ->action(fn (Collection $records, array $data) => ProductPdfExport::download($records->loadMissing('supplier', 'category'), $data['tipo']))
                     ->deselectRecordsAfterCompletion(),
+                PrintLabelAction::bulk(),
                 BulkActionGroup::make([
                     BulkActionHelpers::safeDelete(),
                     BulkActionHelpers::safeForceDelete(),
