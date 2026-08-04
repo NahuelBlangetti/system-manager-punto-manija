@@ -44,8 +44,8 @@ class PromotionForm
                             ->minValue(1)
                             ->maxValue(100)
                             ->suffix('%')
-                            ->required(fn ($get) => $get('type') === PromotionType::Percentage->value)
-                            ->visible(fn ($get) => $get('type') === PromotionType::Percentage->value),
+                            ->required(fn ($get) => $get('type') === PromotionType::Percentage)
+                            ->visible(fn ($get) => $get('type') === PromotionType::Percentage),
                         Toggle::make('active')
                             ->label('Activa')
                             ->default(true),
