@@ -195,7 +195,21 @@ class ProductForm
                             ->maxLength(100),
                         TextInput::make('barcode')
                             ->label('Código de barras')
-                            ->maxLength(100),
+                            ->maxLength(14)
+                            ->dehydrateStateUsing(fn (?string $state) => filled($state) ? $state : null)
+                            ->rule(function () {
+                                return function (string $attribute, $value, \Closure $fail) {
+                                    if (blank($value)) {
+                                        return;
+                                    }
+
+                                    if (! preg_match('/^\d{8}$|^\d{12,14}$/', $value)) {
+                                        $fail('El código de barras debe tener solo números (8, 12, 13 o 14 dígitos), igual que en una etiqueta real. No ingreses texto libre: la impresora lo va a imprimir tal cual lo cargues.');
+                                    }
+                                };
+                            })
+                            ->extraInputAttributes(['inputmode' => 'numeric', 'pattern' => '[0-9]*'])
+                            ->helperText('Solo números: 8 dígitos (EAN-8), 12 (UPC-A), 13 (EAN-13) o 14 (ITF-14). Dejalo vacío si el producto no tiene código de barras.'),
                         TextInput::make('imei')
                             ->label('IMEI')
                             ->maxLength(20),

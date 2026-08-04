@@ -20,17 +20,16 @@
     <style>
         :root {
             /* Dark mode — local nocturno */
-            --surface: #1a1510;
-            --surface-container: #2a2415;
-            --surface-container-low: #36301e;
+            --surface: #140f0c;
+            --surface-container: #221c14;
+            --surface-container-low: #2f271c;
             --on-surface: #fbf0d5;
-            --on-surface-variant: #debec8;
+            --on-surface-variant: #d4b8c0;
             --outline: #8b7078;
             --primary: #d63484;
             --primary-bright: #ffb0cc;
             --tertiary: #60d4ff;
             --tertiary-fixed: #004d63;
-            --secondary: #c2b4ff;
             --border-color: #fbf0d5;
             --navy: #fbf0d5;
             --error: #ff6b6b;
@@ -41,16 +40,36 @@
             --border: 2px solid var(--border-color);
             --radius: 0.5rem;
             --radius-lg: 1rem;
+            --placeholder-bg: #2a2218;
         }
 
         * { box-sizing: border-box; }
 
+        [x-cloak] { display: none !important; }
+
         body {
-            background: var(--surface);
+            background:
+                radial-gradient(ellipse 90% 55% at 12% -10%, rgba(214, 52, 132, 0.22), transparent 55%),
+                radial-gradient(ellipse 70% 45% at 92% 8%, rgba(96, 212, 255, 0.08), transparent 50%),
+                radial-gradient(ellipse 60% 40% at 50% 100%, rgba(214, 52, 132, 0.08), transparent 55%),
+                var(--surface);
             color: var(--on-surface);
             font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
             color-scheme: dark;
+            min-height: 100vh;
         }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.045;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        body > * { position: relative; z-index: 1; }
 
         .font-headline { font-family: 'Anton', ui-sans-serif, sans-serif; letter-spacing: 0.04em; }
         .font-label { font-family: 'Space Grotesk', ui-sans-serif, sans-serif; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
@@ -61,7 +80,7 @@
         .text-tertiary { color: var(--tertiary); }
         .border-accent { border-color: var(--border-color); }
         .bg-surface-container { background-color: var(--surface-container); }
-        .pm-overlay { background: rgba(26, 21, 16, 0.75); }
+        .pm-overlay { background: rgba(20, 15, 12, 0.78); backdrop-filter: blur(2px); }
         .pm-sticker-shadow { box-shadow: var(--shadow-sm); }
         .hover-surface:hover { background-color: var(--surface-container-low); }
         .text-outline { color: var(--outline); }
@@ -70,9 +89,29 @@
         .border-muted { border-color: var(--outline); }
         .bg-disabled { background-color: var(--surface-container); color: var(--outline); }
 
+        @keyframes pm-fade-up {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pm-fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes pm-pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.25); opacity: 0.7; }
+        }
+        .pm-reveal {
+            animation: pm-fade-up 0.55s ease both;
+        }
+        .pm-reveal-delay-1 { animation-delay: 0.08s; }
+        .pm-reveal-delay-2 { animation-delay: 0.16s; }
+        .pm-reveal-delay-3 { animation-delay: 0.24s; }
+
         /* ── Header ── */
         .pm-header {
-            background: var(--surface);
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
+            backdrop-filter: blur(12px);
             border-bottom: var(--border);
             position: sticky;
             top: 0;
@@ -83,6 +122,43 @@
             height: 2.75rem;
             width: auto;
             object-fit: contain;
+        }
+
+        .pm-cart-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.75rem;
+            height: 2.75rem;
+            background: var(--surface);
+            color: var(--on-surface);
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        .pm-cart-btn:hover {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+        }
+        .pm-cart-btn__badge {
+            position: absolute;
+            top: -0.4rem;
+            right: -0.4rem;
+            min-width: 1.25rem;
+            height: 1.25rem;
+            padding: 0 0.3rem;
+            border-radius: 9999px;
+            background: var(--primary);
+            border: 2px solid var(--border-color);
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .pm-input {
@@ -184,51 +260,102 @@
             box-shadow: none;
         }
 
-        /* ── Hero ── */
+        /* ── Hero (full-bleed) ── */
         .pm-hero {
-            background: var(--surface-container-low);
-            border: var(--border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow);
+            position: relative;
+            width: 100%;
+            min-height: clamp(22rem, 62vh, 34rem);
+            display: grid;
+            grid-template-columns: 1fr;
             overflow: hidden;
+            border-bottom: var(--border);
+            background:
+                linear-gradient(105deg, rgba(20, 15, 12, 0.92) 0%, rgba(20, 15, 12, 0.55) 48%, rgba(20, 15, 12, 0.25) 100%),
+                radial-gradient(ellipse 80% 70% at 78% 45%, rgba(214, 52, 132, 0.35), transparent 60%),
+                var(--surface-container-low);
+        }
+        @media (min-width: 768px) {
+            .pm-hero {
+                grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+                align-items: stretch;
+            }
+        }
+
+        .pm-hero__content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2rem 1.25rem 1.5rem;
+            max-width: 40rem;
+        }
+        @media (min-width: 640px) {
+            .pm-hero__content { padding: 3rem 2rem 3.25rem; }
+        }
+        @media (min-width: 1024px) {
+            .pm-hero__content {
+                padding-left: max(2rem, calc((100vw - 80rem) / 2 + 2rem));
+            }
+        }
+
+        .pm-hero__visual {
+            position: relative;
+            min-height: 11rem;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            overflow: hidden;
+            padding-bottom: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .pm-hero__visual {
+                min-height: 100%;
+                align-items: center;
+                justify-content: flex-end;
+                padding-right: max(1rem, calc((100vw - 80rem) / 2));
+            }
+        }
+
+        .pm-hero__visual::before {
+            content: '';
+            position: absolute;
+            width: min(28rem, 90%);
+            height: min(28rem, 90%);
+            border-radius: 9999px;
+            background: radial-gradient(circle, rgba(214, 52, 132, 0.45) 0%, transparent 68%);
+            filter: blur(8px);
+            animation: pm-pulse-dot 4.5s ease-in-out infinite;
         }
 
         .pm-hero-mascot {
-            width: 7rem;
-            height: 7rem;
-            border: var(--border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            object-fit: cover;
-            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+            width: min(72vw, 18rem);
+            height: auto;
+            max-height: 22rem;
+            object-fit: contain;
+            filter: drop-shadow(6px 10px 0 rgba(214, 52, 132, 0.55));
+            animation: pm-fade-up 0.7s ease 0.12s both;
+        }
+        @media (min-width: 768px) {
+            .pm-hero-mascot {
+                width: min(42vw, 22rem);
+                max-height: none;
+            }
         }
 
-        .pm-stat-pill {
+        .pm-hero__cta {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            background: var(--surface);
-            border: var(--border);
-            border-radius: var(--radius-lg);
-            padding: 0.45rem 0.85rem;
-            box-shadow: var(--shadow-sm);
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-        }
-
-        .pm-stat-pill strong {
-            font-family: 'Anton', sans-serif;
-            font-size: 1rem;
-            letter-spacing: 0.02em;
-            color: var(--primary);
+            gap: 0.55rem;
+            margin-top: 1.5rem;
+            width: fit-content;
         }
 
         /* ── Cards ── */
         .pm-card {
-            background: var(--surface);
+            background: color-mix(in srgb, var(--surface) 92%, var(--surface-container));
             border: var(--border);
             border-radius: var(--radius);
             box-shadow: var(--shadow);
@@ -239,8 +366,33 @@
             box-shadow: 6px 6px 0 0 var(--primary);
         }
 
-        .product-card:hover .product-img { transform: scale(1.05); }
-        .product-img { transition: transform 0.3s ease; }
+        .product-card:hover .product-img { transform: scale(1.06); }
+        .product-img { transition: transform 0.35s ease; }
+        .product-card__media {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: var(--placeholder-bg);
+            border-bottom: 2px solid var(--border-color);
+        }
+        .product-card__placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 30% 20%, rgba(214, 52, 132, 0.18), transparent 55%),
+                var(--placeholder-bg);
+            color: var(--outline);
+        }
+        .product-card__price {
+            font-family: 'Anton', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--on-surface);
+            line-height: 1;
+        }
 
         /* ── Chips ── */
         .pm-chip {
@@ -283,6 +435,8 @@
             letter-spacing: 0.05em;
             text-transform: uppercase;
             transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .filter-chip:hover {
             transform: translate(2px, 2px);
@@ -298,13 +452,31 @@
             box-shadow: none;
         }
 
+        .pm-chip-scroll {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.35rem;
+            margin-bottom: 2rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) transparent;
+            -webkit-overflow-scrolling: touch;
+        }
+        .pm-chip-scroll::-webkit-scrollbar { height: 4px; }
+        .pm-chip-scroll::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 9999px;
+        }
+
         /* ── Benefit / step cards ── */
         .pm-benefit-card {
-            background: var(--surface);
-            border: var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-sm);
-            padding: 1rem 1.1rem;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0.25rem 0;
+            border-top: 2px solid var(--border-color);
+            padding-top: 1.1rem;
         }
 
         .pm-step-num {
@@ -357,9 +529,15 @@
             border-radius: var(--radius);
         }
 
+        .pm-drawer-thumb-fallback {
+            background:
+                radial-gradient(circle at 30% 20%, rgba(214, 52, 132, 0.2), transparent 60%),
+                var(--placeholder-bg);
+        }
+
         /* ── Footer ── */
         .pm-footer {
-            background: var(--surface-container);
+            background: color-mix(in srgb, var(--surface-container) 90%, #000);
             border-top: var(--border);
         }
 
@@ -367,7 +545,7 @@
             background: var(--primary);
             border: var(--border);
             box-shadow: var(--shadow);
-            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.2s ease;
         }
         .pm-fab:hover {
             transform: translate(3px, 3px);
@@ -377,7 +555,7 @@
         .pm-fab-badge {
             background: var(--tertiary);
             border: 2px solid var(--border-color);
-            color: #1a1510;
+            color: #140f0c;
             font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
         }
@@ -395,38 +573,52 @@
             height: 100%;
         }
         .pm-category-card:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0 0 var(--primary);
+            transform: translate(-3px, -3px);
+            box-shadow: 7px 7px 0 0 var(--primary);
         }
         .pm-category-card__img-wrap {
+            position: relative;
             aspect-ratio: 1;
-            background: var(--surface-container);
+            background: var(--placeholder-bg);
             border-bottom: 2px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
         }
+        .pm-category-card__img-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(20, 15, 12, 0.55) 0%, transparent 45%);
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
+        .pm-category-card:hover .pm-category-card__img-wrap::after { opacity: 1; }
         .pm-category-card__img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transition: transform 0.35s ease;
         }
+        .pm-category-card:hover .pm-category-card__img { transform: scale(1.07); }
         .pm-category-card__placeholder {
             font-family: 'Anton', sans-serif;
             font-size: 2rem;
             color: var(--primary);
-            opacity: 0.5;
+            opacity: 0.55;
+            letter-spacing: 0.06em;
         }
         .pm-category-card__body {
-            padding: 0.85rem 1rem 1rem;
+            padding: 0.9rem 1rem 1.05rem;
             flex: 1;
             display: flex;
             flex-direction: column;
         }
         .pm-category-card__name {
             font-family: 'Anton', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.98rem;
             letter-spacing: 0.03em;
             text-transform: uppercase;
             color: var(--on-surface);
@@ -444,21 +636,65 @@
             flex: 1;
         }
         .pm-category-card__meta {
-            margin-top: 0.65rem;
+            margin-top: 0.7rem;
             font-family: 'Space Grotesk', sans-serif;
             font-size: 0.65rem;
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
             color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+        .pm-category-card__meta-arrow {
+            transition: transform 0.2s ease;
+        }
+        .pm-category-card:hover .pm-category-card__meta-arrow {
+            transform: translateX(3px);
         }
 
         .pm-brand-title {
             font-family: 'Anton', sans-serif;
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            line-height: 0.95;
-            letter-spacing: 0.04em;
+            font-size: clamp(3rem, 11vw, 5.5rem);
+            line-height: 0.9;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
+        }
+
+        .pm-hero-kicker {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--tertiary);
+            margin-bottom: 0.85rem;
+        }
+
+        .pm-hero-lead {
+            margin-top: 1rem;
+            font-size: 1.05rem;
+            color: var(--on-surface-variant);
+            max-width: 28rem;
+            line-height: 1.55;
+        }
+
+        .pm-section-head h2 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .pm-reveal,
+            .pm-hero-mascot,
+            .pm-category-card,
+            .pm-card,
+            .product-img,
+            .pm-category-card__img {
+                animation: none !important;
+                transition: none !important;
+            }
+            .pm-hero__visual::before { animation: none; }
         }
     </style>
 </head>
@@ -480,7 +716,7 @@
         'ordersUrl' => route('marketplace.orders.store'),
     ];
 @endphp
-<body class="min-h-screen" x-data="cartStore(@js($shippingConfig))" x-cloak>
+<body class="min-h-screen" x-data="cartStore(@js($shippingConfig))">
 
 {{-- CART DRAWER --}}
 <div x-show="open" class="fixed inset-0 z-50 flex justify-end" x-cloak>
@@ -519,9 +755,9 @@
 
             <template x-for="item in items" :key="item.id">
                 <div class="flex gap-3 pm-drawer-item p-3">
-                    <img :src="item.image" :alt="item.name"
-                         class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border-2 border-accent bg-surface-container"
-                         onerror="this.src='https://placehold.co/64x64/f8edd2/584048?text=?'">
+                    <img :src="item.image || ''" :alt="item.name"
+                         class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border-2 border-accent pm-drawer-thumb-fallback"
+                         onerror="this.onerror=null; this.removeAttribute('src'); this.classList.add('pm-drawer-thumb-fallback');">
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-on-surface leading-tight truncate" x-text="item.name"></p>
                         <p class="text-xs text-muted mt-0.5" x-text="'$' + formatPrice(item.price) + ' c/u'"></p>
@@ -582,7 +818,7 @@
                     </p>
                     <p class="text-[11px] text-muted" x-show="quoting">Calculando distancia…</p>
                     <p class="text-[11px] text-on-surface" x-show="!quoting && distanceKm !== null && !outOfRange">
-                        📍 <span x-text="(distanceKm ?? 0).toFixed(1)"></span> km del local — Envío:
+                        <span x-text="(distanceKm ?? 0).toFixed(1)"></span> km del local — Envío:
                         <span class="font-semibold" x-text="'$' + formatPrice(shippingCost)"></span>
                     </p>
                     <p class="text-[11px] text-tertiary" x-show="!quoting && shippingConfig.hasMapsKey && outOfRange && address">
@@ -633,7 +869,7 @@
                 </div>
             </form>
 
-            <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
                 @if(config('store.whatsapp'))
                     <a href="https://wa.me/{{ config('store.whatsapp') }}" target="_blank"
                        class="hidden sm:flex items-center gap-2 pm-btn-secondary px-4 py-2 text-sm">
@@ -644,59 +880,59 @@
                         WhatsApp
                     </a>
                 @endif
+                <button type="button" x-on:click="open = true" class="pm-cart-btn" title="Abrir carrito" aria-label="Abrir carrito">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <span x-show="itemCount > 0" x-text="itemCount" class="pm-cart-btn__badge" x-cloak></span>
+                </button>
             </div>
         </div>
     </div>
 </header>
 
+@if($showHero)
+<section class="pm-hero">
+    <div class="pm-hero__content">
+        <p class="pm-hero-kicker pm-reveal">{{ $catalog['tagline'] ?? '' }}</p>
+        <h1 class="pm-brand-title pm-reveal pm-reveal-delay-1">
+            <span class="text-primary">Punto</span><span class="text-on-surface"> Manija</span>
+        </h1>
+        <p class="font-headline text-xl sm:text-2xl uppercase text-on-surface mt-4 leading-tight pm-reveal pm-reveal-delay-2">
+            {{ $catalog['hero_title'] ?? 'Tu noche empieza acá' }}
+        </p>
+        <p class="pm-hero-lead pm-reveal pm-reveal-delay-3">
+            {{ $catalog['hero_subtitle'] ?? '' }}
+        </p>
+        <a href="#catalogo" class="pm-btn-primary pm-hero__cta px-5 py-3 text-sm pm-reveal pm-reveal-delay-3">
+            Ver catálogo
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+        </a>
+    </div>
+    <div class="pm-hero__visual" aria-hidden="true">
+        <img src="{{ asset('images/punto-manija-mascot.png') }}" alt="" class="pm-hero-mascot">
+    </div>
+</section>
+@endif
+
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-    {{-- HERO (solo en vista principal) --}}
-    @if($showHero)
-    <section class="pm-hero mb-10">
-        <div class="p-6 md:p-8 lg:p-10">
-            <div class="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
-                <img src="{{ asset('images/punto-manija-mascot.png') }}" alt="Punto Manija" class="pm-hero-mascot hidden sm:block">
-                <div class="flex-1">
-                    <p class="font-label text-xs text-tertiary mb-3">{{ $catalog['tagline'] ?? '' }}</p>
-                    <h1 class="pm-brand-title">
-                        <span class="text-primary">Punto</span><span class="text-on-surface"> Manija</span>
-                    </h1>
-                    <p class="font-headline text-xl sm:text-2xl uppercase text-on-surface mt-3 leading-tight">
-                        {{ $catalog['hero_title'] ?? 'Tu noche empieza acá' }}
-                    </p>
-                    <p class="mt-3 text-base text-muted max-w-2xl leading-relaxed">
-                        {{ $catalog['hero_subtitle'] ?? '' }}
-                    </p>
-                    <div class="flex flex-wrap gap-3 mt-5">
-                        <span class="pm-stat-pill"><strong>{{ $catalogTotal }}</strong> productos</span>
-                        @if(config('store.whatsapp'))
-                        <a href="https://wa.me/{{ config('store.whatsapp') }}" target="_blank" class="pm-stat-pill hover-surface transition-colors">
-                            <svg class="w-4 h-4 text-ok" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.091.539 4.057 1.484 5.77L.057 23.273a.75.75 0 00.92.92l5.503-1.427A11.956 11.956 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22.007a10.01 10.01 0 01-5.104-1.399l-.366-.217-3.793.984.999-3.707-.237-.381A9.989 9.989 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10.007-10 10.007z"/></svg>
-                            Pedí por WhatsApp
-                        </a>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </section>
-    @endif
 
     {{-- Vista principal: explorar por categoría --}}
     @if($browsingCategories)
-    <section class="mb-10">
+    <section id="catalogo" class="mb-10 scroll-mt-24">
         <div class="pm-divider mb-8">
             <span class="pm-divider-dot"></span>
             <span class="font-label text-xs text-primary">Catálogo Punto Manija</span>
             <span class="pm-divider-dot"></span>
         </div>
-        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+        <div class="pm-section-head flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
             <div>
-                <h2 class="font-headline text-2xl uppercase text-on-surface">¿Qué estás buscando?</h2>
-                <p class="text-sm text-muted mt-1">Elegí una categoría para ver los {{ $catalogTotal }} productos de Punto Manija.</p>
+                <h2 class="font-headline uppercase text-on-surface">¿Qué estás buscando?</h2>
+                <p class="text-sm text-muted mt-1">Elegí una categoría y armá tu pedido.</p>
             </div>
+            <p class="font-label text-[11px] text-outline">{{ $catalogTotal }} productos · {{ $catalogInStock }} en stock</p>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-5">
             @foreach($categories as $category)
@@ -708,7 +944,8 @@
                     <div class="pm-category-card__img-wrap">
                         @if($thumb)
                             <img src="{{ $thumb }}" alt="{{ $category->name }}"
-                                 class="pm-category-card__img group-hover:scale-105 transition-transform duration-300"
+                                 class="pm-category-card__img"
+                                 loading="lazy"
                                  onerror="this.parentElement.innerHTML='<span class=\'pm-category-card__placeholder\'>PM</span>'">
                         @else
                             <span class="pm-category-card__placeholder">PM</span>
@@ -719,7 +956,10 @@
                         @if($category->description)
                             <p class="pm-category-card__desc">{{ $category->description }}</p>
                         @endif
-                        <span class="pm-category-card__meta">{{ $category->products_count }} productos →</span>
+                        <span class="pm-category-card__meta">
+                            {{ $category->products_count }} productos
+                            <span class="pm-category-card__meta-arrow" aria-hidden="true">→</span>
+                        </span>
                     </div>
                 </a>
             @endforeach
@@ -756,7 +996,7 @@
 
     {{-- Filtros de categoría (solo dentro de una categoría o búsqueda) --}}
     @if($activeCategory || $search)
-    <div class="flex flex-wrap gap-2 mb-8">
+    <div class="pm-chip-scroll">
         @foreach($categories as $category)
             <a href="{{ request()->fullUrlWithQuery(['category' => $category->id, 'search' => null, 'page' => null]) }}"
                class="filter-chip px-4 py-2 text-xs {{ $selectedCategory == $category->id ? 'filter-chip--active' : '' }}">
@@ -795,13 +1035,14 @@
                 ]) @endphp
                 <div class="product-card pm-card overflow-hidden flex flex-col">
 
-                    <div class="aspect-square overflow-hidden bg-surface-container border-b-2 border-accent">
+                    <div class="product-card__media">
                         @if($product->image_url)
                             <img src="{{ $product->image_url }}" alt="{{ $product->name }}"
                                  class="product-img w-full h-full object-cover"
-                                 onerror="this.src='https://placehold.co/400x400/f8edd2/584048?text=Sin+imagen'">
+                                 loading="lazy"
+                                 onerror="this.style.display='none'; this.parentElement.insertAdjacentHTML('beforeend','<div class=\'product-card__placeholder\'><svg class=\'w-12 h-12\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\'/></svg></div>')">
                         @else
-                            <div class="w-full h-full flex items-center justify-center text-outline">
+                            <div class="product-card__placeholder">
                                 <svg class="w-12 h-12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                 </svg>
@@ -811,15 +1052,17 @@
 
                     <div class="p-3 flex flex-col flex-1">
                         @if($product->category)
-                            <span class="pm-chip pm-chip--category px-2 py-0.5 mb-1.5">{{ $product->category->name }}</span>
+                            <span class="pm-chip pm-chip--category px-2 py-0.5 mb-1.5 self-start">{{ $product->category->name }}</span>
                         @endif
                         <h3 class="text-sm font-semibold text-on-surface leading-tight">{{ $product->name }}</h3>
                         @if($product->description)
                             <p class="text-[11px] text-muted mt-1 line-clamp-2 leading-snug flex-1">{{ $product->description }}</p>
+                        @else
+                            <div class="flex-1"></div>
                         @endif
 
-                        <div class="mt-2 flex items-center justify-between gap-2">
-                            <span class="font-headline text-lg text-on-surface">
+                        <div class="mt-2.5 flex items-center justify-between gap-2">
+                            <span class="product-card__price">
                                 ${{ number_format($product->sale_price, 0, ',', '.') }}
                             </span>
                             @if($product->stock <= 0)
@@ -849,28 +1092,6 @@
     @endif
 
     @endif {{-- fin browsingCategories --}}
-
-    {{-- Cómo comprar --}}
-    @if($showHero && !empty($catalog['how_to_buy']))
-    <section class="mt-14">
-        <div class="pm-divider mb-8">
-            <span class="pm-divider-dot"></span>
-            <span class="font-label text-xs text-primary">Cómo comprar</span>
-            <span class="pm-divider-dot"></span>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            @foreach($catalog['how_to_buy'] as $step)
-            <div class="pm-benefit-card flex gap-3 items-start">
-                <span class="pm-step-num">{{ $step['step'] }}</span>
-                <div>
-                    <h3 class="font-headline text-sm uppercase text-on-surface">{{ $step['title'] }}</h3>
-                    <p class="text-sm text-muted mt-1">{{ $step['text'] }}</p>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </section>
-    @endif
 
 </main>
 
@@ -977,14 +1198,15 @@
     </div>
 </footer>
 
-{{-- FAB CARRITO --}}
-<button x-on:click="open = true"
-   class="fixed bottom-6 right-6 z-30 pm-fab text-white w-14 h-14 rounded-full flex items-center justify-center"
-   title="Abrir carrito">
+{{-- FAB CARRITO (solo con ítems; el header siempre tiene acceso) --}}
+<button x-show="itemCount > 0" x-cloak x-on:click="open = true"
+   class="fixed bottom-6 right-6 z-30 pm-fab text-white w-14 h-14 rounded-full flex items-center justify-center sm:hidden"
+   title="Abrir carrito"
+   aria-label="Abrir carrito">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
     </svg>
-    <span x-show="itemCount > 0" x-text="itemCount"
+    <span x-text="itemCount"
           class="absolute -top-1.5 -right-1.5 pm-fab-badge text-[11px] min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center"></span>
 </button>
 

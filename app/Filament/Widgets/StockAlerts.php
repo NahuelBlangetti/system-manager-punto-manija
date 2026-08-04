@@ -14,7 +14,7 @@ class StockAlerts extends TableWidget
 {
     protected static ?string $heading = 'Alertas de stock';
 
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 5;
 
     protected int|string|array $columnSpan = 1;
 

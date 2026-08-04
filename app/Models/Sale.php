@@ -19,6 +19,7 @@ class Sale extends Model
         'payment_method',
         'subtotal',
         'discount',
+        'promo_discount',
         'total',
         'notes',
         'status',
@@ -27,6 +28,7 @@ class Sale extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'discount' => 'decimal:2',
+        'promo_discount' => 'decimal:2',
         'total' => 'decimal:2',
     ];
 

@@ -31,7 +31,7 @@ return [
     'catalog' => [
         'tagline' => 'Córdoba · Ruta 20 · Abierto cuando la noche lo pide',
         'hero_title' => 'Tu noche empieza acá',
-        'hero_subtitle' => 'Elegí tu categoría, armá el carrito y mandanos un WhatsApp. Sin vueltas, sin filas, directo a tu juntada.',
+        'hero_subtitle' => 'Elegí categoría, armá el carrito y pedí por WhatsApp.',
         'about' => [
             'headline' => 'Más que un kiosco',
             'lead' => 'Somos Punto Manija: el lugar donde la previa se arma sola y el after también.',

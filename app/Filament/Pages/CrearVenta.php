@@ -3,9 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Enums\ProductDiscountType;
+use App\Enums\PromotionType;
 use App\Filament\Actions\ConfigurePrinterAction;
 use App\Models\CashRegister;
 use App\Models\Product;
+use App\Models\Promotion;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\User;
@@ -96,9 +98,49 @@ class CrearVenta extends Page
         return round(min(max($amount, 0), $subtotal), 2);
     }
 
+    public function getPromoDiscount(): float
+    {
+        if (empty($this->cartItems)) {
+            return 0.0;
+        }
+
+        $promotions = Promotion::where('active', true)->get()->filter->isCurrentlyActive();
+
+        if ($promotions->isEmpty()) {
+            return 0.0;
+        }
+
+        $products = Product::whereIn('id', collect($this->cartItems)->pluck('product_id'))
+            ->get()
+            ->keyBy('id');
+
+        $discount = 0.0;
+
+        foreach ($this->cartItems as $item) {
+            $product = $products->get($item['product_id']);
+
+            if (! $product) {
+                continue;
+            }
+
+            $promotion = $promotions->first(fn (Promotion $promotion) => $promotion->appliesToProduct($product));
+
+            if (! $promotion) {
+                continue;
+            }
+
+            $discount += match ($promotion->type) {
+                PromotionType::Percentage => $item['subtotal'] * ((float) $promotion->percentage_value / 100),
+                PromotionType::TwoForOne => intdiv($item['quantity'], 2) * $item['unit_price'],
+            };
+        }
+
+        return round($discount, 2);
+    }
+
     public function getTotal(): float
     {
-        return round($this->getSubtotal() - $this->getDiscountAmount(), 2);
+        return round($this->getSubtotal() - $this->getDiscountAmount() - $this->getPromoDiscount(), 2);
     }
 
     public function getCartCount(): int
@@ -368,6 +410,7 @@ class CrearVenta extends Page
 
                 $subtotal = $this->getSubtotal();
                 $discountAmount = $this->getDiscountAmount();
+                $promoDiscount = $this->getPromoDiscount();
 
                 $sale = Sale::create([
                     'user_id' => Auth::id(),
@@ -375,7 +418,8 @@ class CrearVenta extends Page
                     'payment_method' => $this->paymentMethod,
                     'subtotal' => $subtotal,
                     'discount' => $discountAmount,
-                    'total' => round($subtotal - $discountAmount, 2),
+                    'promo_discount' => $promoDiscount,
+                    'total' => round($subtotal - $discountAmount - $promoDiscount, 2),
                     'notes' => $this->notes,
                     'status' => 'completed',
                 ]);

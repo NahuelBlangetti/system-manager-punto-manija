@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\WebOrders\WebOrderResource;
 use App\Filament\Widgets\LatestSales;
+use App\Filament\Widgets\SalesTrend;
 use App\Filament\Widgets\StatsOverview;
 use App\Filament\Widgets\StockAlerts;
 use App\Filament\Widgets\TopProducts;
@@ -64,6 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 StatsOverview::class,
+                SalesTrend::class,
                 LatestSales::class,
                 TopProducts::class,
                 StockAlerts::class,

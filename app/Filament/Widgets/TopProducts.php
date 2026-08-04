@@ -8,13 +8,14 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class TopProducts extends TableWidget
 {
-    protected static ?string $heading = 'Productos destacados';
+    protected static ?string $heading = 'Más vendidos (últimos 30 días)';
 
-    protected static ?int $sort = 3;
+    protected static ?int $sort = 4;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -27,12 +28,19 @@ class TopProducts extends TableWidget
 
     public function table(Table $table): Table
     {
+        $since = Carbon::now()->subDays(30);
+
         return $table
             ->query(
                 Product::query()
                     ->with('category')
                     ->where('active', true)
-                    ->orderByDesc('stock')
+                    ->withSum(['saleItems as units_sold' => function ($query) use ($since) {
+                        $query->whereHas('sale', fn ($sale) => $sale
+                            ->where('status', 'completed')
+                            ->where('created_at', '>=', $since));
+                    }], 'quantity')
+                    ->orderByDesc('units_sold')
                     ->limit(8)
             )
             ->columns([
@@ -53,15 +61,18 @@ class TopProducts extends TableWidget
                     ->badge()
                     ->color('gray'),
 
+                TextColumn::make('units_sold')
+                    ->label('Vendidos')
+                    ->sortable()
+                    ->badge()
+                    ->placeholder('Sin ventas')
+                    ->formatStateUsing(fn ($state) => (int) $state)
+                    ->color(fn ($state) => $state ? 'success' : 'gray'),
+
                 TextColumn::make('sale_price')
                     ->label('Precio')
                     ->formatStateUsing(fn ($state) => '$ '.number_format((float) $state, 2, ',', '.'))
                     ->sortable(),
-
-                TextColumn::make('cost_price')
-                    ->label('Costo')
-                    ->formatStateUsing(fn ($state) => '$ '.number_format((float) $state, 2, ',', '.'))
-                    ->color('gray'),
 
                 TextColumn::make('stock')
                     ->label('Stock')
@@ -73,7 +84,7 @@ class TopProducts extends TableWidget
                         default => 'success',
                     }),
             ])
-            ->defaultSort('stock', 'desc')
+            ->defaultSort('units_sold', 'desc')
             ->paginated(false);
     }
 }

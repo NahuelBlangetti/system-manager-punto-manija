@@ -282,6 +282,15 @@
                                 @endif
                             @endif
 
+                            @if ($this->getPromoDiscount() > 0)
+                                <div class="flex items-center justify-between text-success-600 dark:text-success-400">
+                                    <span class="text-sm font-medium">Promoción aplicada</span>
+                                    <span class="text-sm font-semibold">
+                                        − ${{ number_format($this->getPromoDiscount(), 2, ',', '.') }}
+                                    </span>
+                                </div>
+                            @endif
+
                             <div class="flex items-center justify-between {{ auth()->user()?->isAdmin() ? 'border-t border-gray-200 pt-2 dark:border-white/10' : '' }}">
                                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300">Total</span>
                                 <span class="text-xl font-bold text-gray-900 dark:text-white">

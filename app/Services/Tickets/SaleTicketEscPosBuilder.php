@@ -56,6 +56,10 @@ class SaleTicketEscPosBuilder
             $ticket .= $this->totalLine('Descuento', (float) $sale->discount);
         }
 
+        if ((float) $sale->promo_discount > 0) {
+            $ticket .= $this->totalLine('Promoción', (float) $sale->promo_discount);
+        }
+
         $ticket .= self::ESC.'!'.chr(self::BOLD);
         $ticket .= $this->totalLine('TOTAL', (float) $sale->total);
         $ticket .= self::ESC.'!'.chr(0);
