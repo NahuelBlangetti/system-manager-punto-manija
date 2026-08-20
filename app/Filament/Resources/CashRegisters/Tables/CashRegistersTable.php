@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\CashRegisters\Tables;
 
+use App\Filament\Resources\CashRegisters\Actions\CloseCashRegisterAction;
 use App\Filament\Support\BulkActionHelpers;
+use App\Models\CashRegister;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -89,7 +91,9 @@ class CashRegistersTable
                 //
             ])
             ->recordActions([
-                EditAction::make(),
+                CloseCashRegisterAction::make(),
+                EditAction::make()
+                    ->label(fn (CashRegister $record): string => $record->status === 'open' ? 'Gestionar' : 'Ver'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

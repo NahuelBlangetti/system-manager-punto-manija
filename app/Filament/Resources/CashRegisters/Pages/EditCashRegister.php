@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\CashRegisters\Pages;
 
+use App\Filament\Resources\CashRegisters\Actions\CloseCashRegisterAction;
 use App\Filament\Resources\CashRegisters\CashRegisterResource;
-use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -12,9 +12,27 @@ class EditCashRegister extends EditRecord
 {
     protected static string $resource = CashRegisterResource::class;
 
+    public function getTitle(): string
+    {
+        return $this->record->status === 'open' ? 'Caja abierta' : 'Detalle de caja';
+    }
+
+    // Una caja cerrada queda de solo lectura: no hay botón de guardar.
+    protected function getFormActions(): array
+    {
+        if ($this->record->status === 'closed') {
+            return [];
+        }
+
+        return parent::getFormActions();
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            CloseCashRegisterAction::make()
+                ->after(fn () => $this->redirect(static::getResource()::getUrl('index'))),
+
             // A5: bloquear eliminación si la caja tiene ventas asociadas
             Action::make('delete')
                 ->label('Eliminar')
@@ -42,14 +60,14 @@ class EditCashRegister extends EditRecord
         ];
     }
 
-    // A4: bloquear reapertura de caja cerrada
+    // El cierre solo se hace desde el botón "Cerrar caja"; una caja cerrada es de solo lectura.
     protected function beforeSave(): void
     {
-        if ($this->record->status === 'closed' && $this->data['status'] === 'open') {
+        if ($this->record->status === 'closed') {
             Notification::make()
-                ->title('No se puede reabrir una caja cerrada')
-                ->body('El arqueo de este turno ya fue registrado. Abrí una nueva caja si necesitás continuar operando.')
-                ->danger()
+                ->title('Caja cerrada')
+                ->body('Los registros de una caja cerrada no se pueden modificar.')
+                ->warning()
                 ->persistent()
                 ->send();
 
@@ -60,34 +78,5 @@ class EditCashRegister extends EditRecord
     protected function afterSave(): void
     {
         $this->record->recalculate();
-
-        if ($this->record->status === 'closed' && (float) $this->record->difference !== 0.0) {
-            $this->notifyDifference();
-        }
-    }
-
-    private function notifyDifference(): void
-    {
-        $difference = (float) $this->record->difference;
-        $formatted = '$ '.number_format(abs($difference), 2, ',', '.');
-        $label = $difference < 0 ? "faltante de {$formatted}" : "sobrante de {$formatted}";
-
-        $action = Action::make('ver')
-            ->label('Ver caja')
-            ->url(CashRegisterResource::getUrl('edit', ['record' => $this->record]))
-            ->button();
-
-        $cashierName = $this->record->user->name;
-
-        User::all()->each(function (User $user) use ($label, $difference, $action, $cashierName) {
-            $notification = Notification::make()
-                ->title('Diferencia de caja al cerrar')
-                ->body("La caja de {$cashierName} cerró con un {$label}.")
-                ->actions([$action]);
-
-            $difference < 0 ? $notification->danger() : $notification->warning();
-
-            $notification->sendToDatabase($user);
-        });
     }
 }

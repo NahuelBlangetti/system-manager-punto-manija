@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 class CashRegister extends Model
 {
@@ -22,12 +21,12 @@ class CashRegister extends Model
     ];
 
     protected $casts = [
-        'opening_amount'  => 'decimal:2',
-        'closing_amount'  => 'decimal:2',
+        'opening_amount' => 'decimal:2',
+        'closing_amount' => 'decimal:2',
         'expected_amount' => 'decimal:2',
-        'difference'      => 'decimal:2',
-        'opened_at'       => 'datetime',
-        'closed_at'       => 'datetime',
+        'difference' => 'decimal:2',
+        'opened_at' => 'datetime',
+        'closed_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
@@ -45,18 +44,92 @@ class CashRegister extends Model
         return $this->hasMany(CashRegisterEntry::class);
     }
 
+    public function cashSalesTotal(): float
+    {
+        return $this->salesTotalByPaymentMethod('cash');
+    }
+
+    public function transferSalesTotal(): float
+    {
+        return $this->salesTotalByPaymentMethod('transfer');
+    }
+
+    public function cardSalesTotal(): float
+    {
+        return $this->salesTotalByPaymentMethod('card');
+    }
+
+    public function salesTotalByPaymentMethod(string $paymentMethod): float
+    {
+        return (float) $this->sales()
+            ->where('status', 'completed')
+            ->where('payment_method', $paymentMethod)
+            ->sum('total');
+    }
+
+    public function incomeEntriesTotal(): float
+    {
+        return (float) $this->entries()->where('type', 'income')->sum('amount');
+    }
+
+    public function expenseEntriesTotal(): float
+    {
+        return (float) $this->entries()->where('type', 'expense')->sum('amount');
+    }
+
+    public function calculateExpectedAmount(): float
+    {
+        return (float) $this->opening_amount
+            + $this->cashSalesTotal()
+            + $this->incomeEntriesTotal()
+            - $this->expenseEntriesTotal();
+    }
+
     public function recalculate(): void
     {
-        $cashSales = $this->sales()->where('payment_method', 'cash')->sum('total');
-        $income    = $this->entries()->where('type', 'income')->sum('amount');
-        $expenses  = $this->entries()->where('type', 'expense')->sum('amount');
-
-        $this->expected_amount = $this->opening_amount + $cashSales + $income - $expenses;
+        $this->expected_amount = $this->calculateExpectedAmount();
 
         if ($this->closing_amount !== null) {
             $this->difference = $this->closing_amount - $this->expected_amount;
         }
 
         $this->saveQuietly();
+    }
+
+    public function close(float $closingAmount, ?string $closingNotes = null): void
+    {
+        $notes = $this->notes;
+
+        if (filled($closingNotes)) {
+            $notes = filled($notes) ? $notes."\n\n".$closingNotes : $closingNotes;
+        }
+
+        $this->closing_amount = $closingAmount;
+        $this->closed_at = now();
+        $this->status = 'closed';
+        $this->notes = $notes;
+
+        $this->recalculate();
+    }
+
+    public static function lastClosed(): ?self
+    {
+        return static::query()
+            ->where('status', 'closed')
+            ->whereNotNull('closing_amount')
+            ->latest('closed_at')
+            ->first();
+    }
+
+    public static function suggestedOpeningAmount(): float
+    {
+        $lastClosed = static::lastClosed();
+
+        return $lastClosed ? (float) $lastClosed->closing_amount : 0;
+    }
+
+    public static function formatMoney(float $amount): string
+    {
+        return '$ '.number_format($amount, 2, ',', '.');
     }
 }
