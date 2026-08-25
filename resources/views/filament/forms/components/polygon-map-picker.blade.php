@@ -10,7 +10,9 @@
             state: $wire.$entangle('{{ $statePath }}'),
             map: null,
             polygon: null,
-            drawingManager: null,
+            clickListener: null,
+            drawing: false,
+            drawingPointCount: 0,
             mapsKey: @js(config('services.google_maps.key')),
             centerLat: @js((float) config('store.lat')),
             centerLng: @js((float) config('store.lng')),
@@ -19,12 +21,12 @@
                 this.loadGoogleMaps().then(() => this.initMap());
             },
             loadGoogleMaps() {
-                if (window.google?.maps?.drawing) return Promise.resolve();
+                if (window.google?.maps) return Promise.resolve();
                 if (! window.__gmapsAdminPromise) {
                     window.__gmapsAdminPromise = new Promise((resolve) => {
                         window.__onGmapsAdminReady = () => resolve();
                         const script = document.createElement('script');
-                        script.src = `https://maps.googleapis.com/maps/api/js?key=${this.mapsKey}&libraries=drawing&language=es&region=AR&callback=__onGmapsAdminReady`;
+                        script.src = `https://maps.googleapis.com/maps/api/js?key=${this.mapsKey}&language=es&region=AR&callback=__onGmapsAdminReady`;
                         script.defer = true;
                         document.head.appendChild(script);
                     });
@@ -41,44 +43,64 @@
                     streetViewControl: false,
                 });
 
-                this.drawingManager = new google.maps.drawing.DrawingManager({
-                    drawingMode: hasExisting ? null : google.maps.drawing.OverlayType.POLYGON,
-                    drawingControl: ! hasExisting,
-                    drawingControlOptions: { drawingModes: ['polygon'] },
-                    polygonOptions: {
-                        fillColor: '#ef4444',
-                        fillOpacity: 0.3,
-                        strokeColor: '#dc2626',
-                        strokeWeight: 2,
-                        editable: true,
-                        draggable: true,
-                    },
-                });
-                this.drawingManager.setMap(this.map);
-
                 if (hasExisting) {
-                    this.polygon = new google.maps.Polygon({
-                        paths: this.state.map((p) => ({ lat: Number(p.lat), lng: Number(p.lng) })),
-                        fillColor: '#ef4444',
-                        fillOpacity: 0.3,
-                        strokeColor: '#dc2626',
-                        strokeWeight: 2,
-                        editable: true,
-                        draggable: true,
-                    });
-                    this.polygon.setMap(this.map);
+                    this.buildPolygon(this.state.map((p) => ({ lat: Number(p.lat), lng: Number(p.lng) })));
+                    this.polygon.setEditable(true);
+                    this.polygon.setDraggable(true);
                     this.bindPolygonEvents();
                     this.fitToPolygon();
                 }
-
-                google.maps.event.addListener(this.drawingManager, 'polygoncomplete', (poly) => {
-                    if (this.polygon) this.polygon.setMap(null);
-                    this.polygon = poly;
-                    this.drawingManager.setDrawingMode(null);
-                    this.drawingManager.setOptions({ drawingControl: false });
-                    this.bindPolygonEvents();
-                    this.syncState();
+            },
+            buildPolygon(paths) {
+                this.polygon = new google.maps.Polygon({
+                    map: this.map,
+                    paths,
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.3,
+                    strokeColor: '#dc2626',
+                    strokeWeight: 2,
                 });
+            },
+            startDrawing() {
+                if (this.polygon) {
+                    this.polygon.setMap(null);
+                    this.polygon = null;
+                }
+
+                this.state = [];
+                this.drawing = true;
+                this.drawingPointCount = 0;
+                this.buildPolygon([]);
+                this.map.setOptions({ draggableCursor: 'crosshair' });
+
+                this.clickListener = google.maps.event.addListener(this.map, 'click', (e) => {
+                    this.polygon.getPath().push(e.latLng);
+                    this.drawingPointCount++;
+                });
+            },
+            undoLastPoint() {
+                if (! this.polygon) return;
+
+                const path = this.polygon.getPath();
+
+                if (path.getLength() > 0) {
+                    path.removeAt(path.getLength() - 1);
+                    this.drawingPointCount = Math.max(0, this.drawingPointCount - 1);
+                }
+            },
+            finishDrawing() {
+                if (! this.polygon || this.polygon.getPath().getLength() < 3) return;
+
+                if (this.clickListener) {
+                    google.maps.event.removeListener(this.clickListener);
+                    this.clickListener = null;
+                }
+
+                this.map.setOptions({ draggableCursor: null });
+                this.drawing = false;
+                this.polygon.setOptions({ editable: true, draggable: true });
+                this.bindPolygonEvents();
+                this.syncState();
             },
             bindPolygonEvents() {
                 const path = this.polygon.getPath();
@@ -111,17 +133,20 @@
                 this.map.fitBounds(bounds);
             },
             clearPolygon() {
+                if (this.clickListener) {
+                    google.maps.event.removeListener(this.clickListener);
+                    this.clickListener = null;
+                }
+
                 if (this.polygon) {
                     this.polygon.setMap(null);
                     this.polygon = null;
                 }
 
+                this.map?.setOptions({ draggableCursor: null });
+                this.drawing = false;
+                this.drawingPointCount = 0;
                 this.state = [];
-
-                if (this.drawingManager) {
-                    this.drawingManager.setOptions({ drawingControl: true });
-                    this.drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
-                }
             },
         }"
         class="space-y-2"
@@ -135,10 +160,38 @@
         <template x-if="mapsKey">
             <div class="space-y-2">
                 <div x-ref="mapEl" style="height: 420px; border-radius: 0.5rem; overflow: hidden;" class="border border-gray-300 dark:border-gray-600"></div>
-                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span x-show="! state || state.length < 3">Usá la herramienta del mapa (ícono de polígono) para dibujar la zona.</span>
-                    <span x-show="state && state.length >= 3" x-text="`${state.length} puntos definidos`"></span>
-                    <button type="button" x-on:click="clearPolygon()" class="text-danger-600 hover:underline">Borrar polígono</button>
+
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <button type="button" x-show="! drawing && ! polygon" x-on:click="startDrawing()"
+                        class="fi-btn fi-btn-size-sm rounded-lg bg-primary-600 px-3 py-1.5 font-semibold text-white hover:bg-primary-500">
+                        Dibujar zona
+                    </button>
+
+                    <button type="button" x-show="! drawing && polygon" x-on:click="startDrawing()"
+                        class="text-gray-600 hover:underline dark:text-gray-300">
+                        Rehacer polígono
+                    </button>
+
+                    <template x-if="drawing">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span class="text-gray-500 dark:text-gray-400">
+                                Hacé clic en el mapa para marcar cada punto de la zona (<span x-text="drawingPointCount"></span> puntos).
+                            </span>
+                            <button type="button" x-on:click="undoLastPoint()" x-show="drawingPointCount > 0" class="text-gray-600 hover:underline dark:text-gray-300">
+                                Deshacer último punto
+                            </button>
+                            <button type="button" x-on:click="finishDrawing()" x-show="drawingPointCount >= 3"
+                                class="fi-btn fi-btn-size-sm rounded-lg bg-success-600 px-3 py-1.5 font-semibold text-white hover:bg-success-500">
+                                Finalizar polígono
+                            </button>
+                        </div>
+                    </template>
+
+                    <span x-show="! drawing && state && state.length >= 3" class="text-gray-500 dark:text-gray-400" x-text="`${state.length} puntos definidos`"></span>
+
+                    <button type="button" x-on:click="clearPolygon()" x-show="drawing || (state && state.length > 0)" class="ms-auto text-danger-600 hover:underline">
+                        Borrar polígono
+                    </button>
                 </div>
             </div>
         </template>

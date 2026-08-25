@@ -54,7 +54,7 @@ class RedZoneFlowTest extends TestCase
     public function test_red_zone_pages_render_without_errors(): void
     {
         $admin = $this->admin();
-        $this->squareZone();
+        $zone = $this->squareZone();
 
         $this->actingAs($admin)
             ->get('/admin/red-zones')
@@ -62,6 +62,10 @@ class RedZoneFlowTest extends TestCase
 
         $this->actingAs($admin)
             ->get('/admin/red-zones/create')
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get("/admin/red-zones/{$zone->id}/edit")
             ->assertOk();
     }
 
