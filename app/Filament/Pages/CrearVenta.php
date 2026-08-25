@@ -70,6 +70,8 @@ class CrearVenta extends Page
 
     public string $discountValue = '';
 
+    public bool $printTicket = true;
+
     public ?string $lastSaleNumber = null;
 
     public function getSubtotal(): float
@@ -456,8 +458,10 @@ class CrearVenta extends Page
         $this->discountType = 'fixed';
         $this->discountValue = '';
 
-        $ticket = app(SaleTicketEscPosBuilder::class)->build($sale);
-        EscPosPrint::dispatch($this, $ticket);
+        if ($this->printTicket) {
+            $ticket = app(SaleTicketEscPosBuilder::class)->build($sale);
+            EscPosPrint::dispatch($this, $ticket);
+        }
 
         Notification::make()
             ->title("¡Venta {$this->lastSaleNumber} registrada!")

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\RedZone;
 use App\Models\WebOrder;
 use App\Services\Shipping\ShippingPriceCalculator;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,14 @@ class MarketplaceOrderController extends Controller
             'items.*.id' => ['required', 'integer'],
             'items.*.qty' => ['required', 'integer', 'min:1'],
         ]);
+
+        if ($data['delivery_type'] === 'delivery' && $data['lat'] !== null && $data['lng'] !== null) {
+            if (RedZone::findBlocking((float) $data['lat'], (float) $data['lng'])) {
+                return response()->json([
+                    'message' => 'No realizamos envíos a esa dirección. Podés coordinar el retiro en el local o escribirnos por WhatsApp.',
+                ], 422);
+            }
+        }
 
         $products = Product::query()
             ->whereIn('id', collect($data['items'])->pluck('id'))

@@ -714,6 +714,7 @@
         'storeLat' => (float) config('store.lat'),
         'storeLng' => (float) config('store.lng'),
         'ordersUrl' => route('marketplace.orders.store'),
+        'redZones' => \App\Models\RedZone::query()->active()->get(['name', 'polygon'])->values(),
     ];
 @endphp
 <body class="min-h-screen" x-data="cartStore(@js($shippingConfig))">
@@ -821,7 +822,10 @@
                         <span x-text="(distanceKm ?? 0).toFixed(1)"></span> km del local — Envío:
                         <span class="font-semibold" x-text="'$' + formatPrice(shippingCost)"></span>
                     </p>
-                    <p class="text-[11px] text-tertiary" x-show="!quoting && shippingConfig.hasMapsKey && outOfRange && address">
+                    <p class="text-[11px] font-semibold text-error" x-show="!quoting && inRedZone">
+                        No realizamos envíos a esa zona. Podés elegir "Retiro en el local" o coordinar por WhatsApp.
+                    </p>
+                    <p class="text-[11px] text-tertiary" x-show="!quoting && !inRedZone && shippingConfig.hasMapsKey && outOfRange && address">
                         Envío a coordinar por WhatsApp (fuera de zona automática o dirección sin confirmar del listado).
                     </p>
                 </div>
@@ -833,7 +837,7 @@
                 <span>Total estimado</span>
                 <span class="text-primary" x-text="'$' + formatPrice(total)"></span>
             </div>
-            <button type="button" x-on:click="confirmOrder()" :disabled="submitting"
+            <button type="button" x-on:click="confirmOrder()" :disabled="submitting || (deliveryType === 'delivery' && inRedZone)"
                class="pm-btn-primary flex items-center justify-center gap-2 w-full py-3.5 text-sm">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
@@ -1228,6 +1232,8 @@ function cartStore(shippingConfig) {
         distanceKm: null,
         shippingCost: null,
         outOfRange: false,
+        inRedZone: false,
+        redZoneName: '',
         quoting: false,
         submitting: false,
         errorMessage: '',
@@ -1329,6 +1335,9 @@ function cartStore(shippingConfig) {
                 this.address = place.formatted_address;
                 this.lat = place.geometry.location.lat();
                 this.lng = place.geometry.location.lng();
+
+                if (this.checkRedZone()) return;
+
                 this.computeShipping();
             });
         },
@@ -1339,6 +1348,44 @@ function cartStore(shippingConfig) {
             this.distanceKm = null;
             this.shippingCost = null;
             this.outOfRange = true;
+            this.inRedZone = false;
+            this.redZoneName = '';
+        },
+
+        // Ray casting: mismo algoritmo que RedZone::containsPoint() en el backend,
+        // que es la validación autoritativa al confirmar el pedido.
+        pointInPolygon(lat, lng, polygon) {
+            let inside = false;
+
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const yi = Number(polygon[i].lat);
+                const xi = Number(polygon[i].lng);
+                const yj = Number(polygon[j].lat);
+                const xj = Number(polygon[j].lng);
+
+                const intersects = (yi > lat) !== (yj > lat)
+                    && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+
+                if (intersects) inside = !inside;
+            }
+
+            return inside;
+        },
+
+        checkRedZone() {
+            const zones = this.shippingConfig.redZones || [];
+            const hit = zones.find((zone) => this.pointInPolygon(this.lat, this.lng, zone.polygon || []));
+
+            this.inRedZone = !!hit;
+            this.redZoneName = hit ? hit.name : '';
+
+            if (this.inRedZone) {
+                this.distanceKm = null;
+                this.shippingCost = null;
+                this.outOfRange = true;
+            }
+
+            return this.inRedZone;
         },
 
         priceForDistance(km) {
@@ -1351,6 +1398,13 @@ function cartStore(shippingConfig) {
         },
 
         computeShipping() {
+            if (this.inRedZone) {
+                this.distanceKm = null;
+                this.shippingCost = null;
+                this.outOfRange = true;
+                return;
+            }
+
             if (this.lat === null || this.lng === null || !this.shippingConfig.storeAddress || typeof google === 'undefined' || !google.maps) {
                 this.distanceKm = null;
                 this.shippingCost = null;
@@ -1394,6 +1448,11 @@ function cartStore(shippingConfig) {
 
             if (this.deliveryType === 'delivery' && !this.address) {
                 this.errorMessage = 'Completá tu dirección para el envío.';
+                return;
+            }
+
+            if (this.deliveryType === 'delivery' && this.inRedZone) {
+                this.errorMessage = 'No realizamos envíos a esa dirección. Podés retirar en el local o coordinar por WhatsApp.';
                 return;
             }
 
