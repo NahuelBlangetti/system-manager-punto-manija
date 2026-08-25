@@ -71,7 +71,7 @@
                 this.drawing = true;
                 this.drawingPointCount = 0;
                 this.buildPolygon([]);
-                this.map.setOptions({ draggableCursor: 'crosshair' });
+                this.map.setOptions({ draggableCursor: 'crosshair', draggable: false });
 
                 this.clickListener = google.maps.event.addListener(this.map, 'click', (e) => {
                     this.polygon.getPath().push(e.latLng);
@@ -96,7 +96,7 @@
                     this.clickListener = null;
                 }
 
-                this.map.setOptions({ draggableCursor: null });
+                this.map.setOptions({ draggableCursor: null, draggable: true });
                 this.drawing = false;
                 this.polygon.setOptions({ editable: true, draggable: true });
                 this.bindPolygonEvents();
@@ -143,7 +143,7 @@
                     this.polygon = null;
                 }
 
-                this.map?.setOptions({ draggableCursor: null });
+                this.map?.setOptions({ draggableCursor: null, draggable: true });
                 this.drawing = false;
                 this.drawingPointCount = 0;
                 this.state = [];
@@ -175,7 +175,7 @@
                     <template x-if="drawing">
                         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                             <span class="text-gray-500 dark:text-gray-400">
-                                Hacé clic en el mapa para marcar cada punto de la zona (<span x-text="drawingPointCount"></span> puntos).
+                                Hacé clic (sin arrastrar) en cada esquina de la zona — el mapa no se mueve mientras dibujás (<span x-text="drawingPointCount"></span> puntos).
                             </span>
                             <button type="button" x-on:click="undoLastPoint()" x-show="drawingPointCount > 0" class="text-gray-600 hover:underline dark:text-gray-300">
                                 Deshacer último punto
