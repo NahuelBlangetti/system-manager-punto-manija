@@ -150,6 +150,10 @@
                     clickListener = google.maps.event.addListener(map, 'click', (e) => {
                         polygon.getPath().push(e.latLng);
                         this.drawingPointCount++;
+                        // Keep `state` (the actual form value) in sync with every click,
+                        // not just on "Finalizar" — otherwise submitting mid-draw saves
+                        // an empty polygon even though points are visibly placed.
+                        this.syncState();
                     });
                 },
                 undoLastPoint() {
@@ -160,6 +164,7 @@
                     if (path.getLength() > 0) {
                         path.removeAt(path.getLength() - 1);
                         this.drawingPointCount = Math.max(0, this.drawingPointCount - 1);
+                        this.syncState();
                     }
                 },
                 finishDrawing() {
