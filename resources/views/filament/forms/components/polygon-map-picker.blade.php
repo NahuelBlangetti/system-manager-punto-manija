@@ -6,149 +6,12 @@
 <x-dynamic-component :component="$fieldWrapperView" :field="$field">
     <div
         wire:ignore
-        x-data="{
-            state: $wire.$entangle('{{ $statePath }}'),
-            map: null,
-            polygon: null,
-            clickListener: null,
-            drawing: false,
-            drawingPointCount: 0,
-            mapsKey: @js(config('services.google_maps.key')),
-            centerLat: @js((float) config('store.lat')),
-            centerLng: @js((float) config('store.lng')),
-            init() {
-                if (! this.mapsKey) return;
-                this.loadGoogleMaps().then(() => this.initMap());
-            },
-            loadGoogleMaps() {
-                if (window.google?.maps) return Promise.resolve();
-                if (! window.__gmapsAdminPromise) {
-                    window.__gmapsAdminPromise = new Promise((resolve) => {
-                        window.__onGmapsAdminReady = () => resolve();
-                        const script = document.createElement('script');
-                        script.src = `https://maps.googleapis.com/maps/api/js?key=${this.mapsKey}&language=es&region=AR&callback=__onGmapsAdminReady`;
-                        script.defer = true;
-                        document.head.appendChild(script);
-                    });
-                }
-                return window.__gmapsAdminPromise;
-            },
-            initMap() {
-                const hasExisting = Array.isArray(this.state) && this.state.length >= 3;
-
-                this.map = new google.maps.Map(this.$refs.mapEl, {
-                    center: { lat: this.centerLat, lng: this.centerLng },
-                    zoom: 12,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                });
-
-                if (hasExisting) {
-                    this.buildPolygon(this.state.map((p) => ({ lat: Number(p.lat), lng: Number(p.lng) })));
-                    this.polygon.setEditable(true);
-                    this.polygon.setDraggable(true);
-                    this.bindPolygonEvents();
-                    this.fitToPolygon();
-                }
-            },
-            buildPolygon(paths) {
-                this.polygon = new google.maps.Polygon({
-                    map: this.map,
-                    paths,
-                    fillColor: '#ef4444',
-                    fillOpacity: 0.3,
-                    strokeColor: '#dc2626',
-                    strokeWeight: 2,
-                });
-            },
-            startDrawing() {
-                if (this.polygon) {
-                    this.polygon.setMap(null);
-                    this.polygon = null;
-                }
-
-                this.state = [];
-                this.drawing = true;
-                this.drawingPointCount = 0;
-                this.buildPolygon([]);
-                this.map.setOptions({ draggableCursor: 'crosshair', draggable: false });
-
-                this.clickListener = google.maps.event.addListener(this.map, 'click', (e) => {
-                    this.polygon.getPath().push(e.latLng);
-                    this.drawingPointCount++;
-                });
-            },
-            undoLastPoint() {
-                if (! this.polygon) return;
-
-                const path = this.polygon.getPath();
-
-                if (path.getLength() > 0) {
-                    path.removeAt(path.getLength() - 1);
-                    this.drawingPointCount = Math.max(0, this.drawingPointCount - 1);
-                }
-            },
-            finishDrawing() {
-                if (! this.polygon || this.polygon.getPath().getLength() < 3) return;
-
-                if (this.clickListener) {
-                    google.maps.event.removeListener(this.clickListener);
-                    this.clickListener = null;
-                }
-
-                this.map.setOptions({ draggableCursor: null, draggable: true });
-                this.drawing = false;
-                this.polygon.setOptions({ editable: true, draggable: true });
-                this.bindPolygonEvents();
-                this.syncState();
-            },
-            bindPolygonEvents() {
-                const path = this.polygon.getPath();
-                ['insert_at', 'remove_at', 'set_at'].forEach((evt) => {
-                    google.maps.event.addListener(path, evt, () => this.syncState());
-                });
-                google.maps.event.addListener(this.polygon, 'dragend', () => this.syncState());
-            },
-            syncState() {
-                if (! this.polygon) {
-                    this.state = [];
-                    return;
-                }
-
-                const path = this.polygon.getPath();
-                const points = [];
-
-                for (let i = 0; i < path.getLength(); i++) {
-                    const point = path.getAt(i);
-                    points.push({ lat: point.lat(), lng: point.lng() });
-                }
-
-                this.state = points;
-            },
-            fitToPolygon() {
-                if (! this.polygon) return;
-
-                const bounds = new google.maps.LatLngBounds();
-                this.polygon.getPath().forEach((point) => bounds.extend(point));
-                this.map.fitBounds(bounds);
-            },
-            clearPolygon() {
-                if (this.clickListener) {
-                    google.maps.event.removeListener(this.clickListener);
-                    this.clickListener = null;
-                }
-
-                if (this.polygon) {
-                    this.polygon.setMap(null);
-                    this.polygon = null;
-                }
-
-                this.map?.setOptions({ draggableCursor: null, draggable: true });
-                this.drawing = false;
-                this.drawingPointCount = 0;
-                this.state = [];
-            },
-        }"
+        x-data="redZonePolygonPicker(
+            $wire.$entangle('{{ $statePath }}'),
+            @js(config('services.google_maps.key')),
+            @js((float) config('store.lat')),
+            @js((float) config('store.lng'))
+        )"
         class="space-y-2"
     >
         <template x-if="! mapsKey">
@@ -162,12 +25,12 @@
                 <div x-ref="mapEl" style="height: 420px; border-radius: 0.5rem; overflow: hidden;" class="border border-gray-300 dark:border-gray-600"></div>
 
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                    <button type="button" x-show="! drawing && ! polygon" x-on:click="startDrawing()"
+                    <button type="button" x-show="! drawing && ! hasPolygon" x-on:click="startDrawing()"
                         class="fi-btn fi-btn-size-sm rounded-lg bg-primary-600 px-3 py-1.5 font-semibold text-white hover:bg-primary-500">
                         Dibujar zona
                     </button>
 
-                    <button type="button" x-show="! drawing && polygon" x-on:click="startDrawing()"
+                    <button type="button" x-show="! drawing && hasPolygon" x-on:click="startDrawing()"
                         class="text-gray-600 hover:underline dark:text-gray-300">
                         Rehacer polígono
                     </button>
@@ -197,3 +60,170 @@
         </template>
     </div>
 </x-dynamic-component>
+
+<script>
+    // Alpine's reactivity proxies every property on x-data. google.maps.Map/Polygon
+    // instances break when accessed through that proxy (their internal event wiring
+    // is keyed by the raw object's identity), so map/polygon/clickListener are kept
+    // as plain closure variables here instead of reactive state — only the values the
+    // UI actually needs to react to (state, drawing, drawingPointCount) go on `this`.
+    if (! window.redZonePolygonPicker) {
+        window.redZonePolygonPicker = function (entangledState, mapsKey, centerLat, centerLng) {
+            let map = null;
+            let polygon = null;
+            let clickListener = null;
+
+            return {
+                state: entangledState,
+                drawing: false,
+                drawingPointCount: 0,
+                hasPolygon: false,
+                mapsKey,
+
+                init() {
+                    if (! mapsKey) return;
+                    this.loadGoogleMaps().then(() => this.initMap());
+                },
+                loadGoogleMaps() {
+                    if (window.google?.maps) return Promise.resolve();
+                    if (! window.__gmapsAdminPromise) {
+                        window.__gmapsAdminPromise = new Promise((resolve) => {
+                            window.__onGmapsAdminReady = () => resolve();
+                            const script = document.createElement('script');
+                            script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsKey}&language=es&region=AR&callback=__onGmapsAdminReady`;
+                            script.defer = true;
+                            document.head.appendChild(script);
+                        });
+                    }
+                    return window.__gmapsAdminPromise;
+                },
+                initMap() {
+                    const hasExisting = Array.isArray(this.state) && this.state.length >= 3;
+
+                    map = new google.maps.Map(this.$refs.mapEl, {
+                        center: { lat: centerLat, lng: centerLng },
+                        zoom: 12,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                    });
+
+                    if (hasExisting) {
+                        this.buildPolygon(this.state.map((p) => ({ lat: Number(p.lat), lng: Number(p.lng) })));
+                        polygon.setEditable(true);
+                        polygon.setDraggable(true);
+                        this.bindPolygonEvents();
+                        this.fitToPolygon();
+                    }
+                },
+                buildPolygon(paths) {
+                    // An empty `paths: []` makes Polygon.getPath() return undefined
+                    // (Google treats it as zero rings, not one empty ring) — omit the
+                    // key entirely for a fresh polygon so getPath() starts as a usable
+                    // empty MVCArray we can push points onto while drawing.
+                    const options = {
+                        map,
+                        fillColor: '#ef4444',
+                        fillOpacity: 0.3,
+                        strokeColor: '#dc2626',
+                        strokeWeight: 2,
+                    };
+
+                    if (paths.length > 0) {
+                        options.paths = paths;
+                    }
+
+                    polygon = new google.maps.Polygon(options);
+                    this.hasPolygon = true;
+                },
+                startDrawing() {
+                    if (polygon) {
+                        polygon.setMap(null);
+                        polygon = null;
+                    }
+
+                    this.state = [];
+                    this.drawing = true;
+                    this.drawingPointCount = 0;
+                    this.buildPolygon([]);
+                    map.setOptions({ draggableCursor: 'crosshair' });
+
+                    clickListener = google.maps.event.addListener(map, 'click', (e) => {
+                        polygon.getPath().push(e.latLng);
+                        this.drawingPointCount++;
+                    });
+                },
+                undoLastPoint() {
+                    if (! polygon) return;
+
+                    const path = polygon.getPath();
+
+                    if (path.getLength() > 0) {
+                        path.removeAt(path.getLength() - 1);
+                        this.drawingPointCount = Math.max(0, this.drawingPointCount - 1);
+                    }
+                },
+                finishDrawing() {
+                    if (! polygon || polygon.getPath().getLength() < 3) return;
+
+                    if (clickListener) {
+                        google.maps.event.removeListener(clickListener);
+                        clickListener = null;
+                    }
+
+                    map.setOptions({ draggableCursor: null });
+                    this.drawing = false;
+                    polygon.setOptions({ editable: true, draggable: true });
+                    this.bindPolygonEvents();
+                    this.syncState();
+                },
+                bindPolygonEvents() {
+                    const path = polygon.getPath();
+                    ['insert_at', 'remove_at', 'set_at'].forEach((evt) => {
+                        google.maps.event.addListener(path, evt, () => this.syncState());
+                    });
+                    google.maps.event.addListener(polygon, 'dragend', () => this.syncState());
+                },
+                syncState() {
+                    if (! polygon) {
+                        this.state = [];
+                        return;
+                    }
+
+                    const path = polygon.getPath();
+                    const points = [];
+
+                    for (let i = 0; i < path.getLength(); i++) {
+                        const point = path.getAt(i);
+                        points.push({ lat: point.lat(), lng: point.lng() });
+                    }
+
+                    this.state = points;
+                },
+                fitToPolygon() {
+                    if (! polygon) return;
+
+                    const bounds = new google.maps.LatLngBounds();
+                    polygon.getPath().forEach((point) => bounds.extend(point));
+                    map.fitBounds(bounds);
+                },
+                clearPolygon() {
+                    if (clickListener) {
+                        google.maps.event.removeListener(clickListener);
+                        clickListener = null;
+                    }
+
+                    if (polygon) {
+                        polygon.setMap(null);
+                        polygon = null;
+                    }
+
+                    map?.setOptions({ draggableCursor: null });
+                    this.drawing = false;
+                    this.drawingPointCount = 0;
+                    this.hasPolygon = false;
+                    this.state = [];
+                },
+            };
+        };
+    }
+</script>
