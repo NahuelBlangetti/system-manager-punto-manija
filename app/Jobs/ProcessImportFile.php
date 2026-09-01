@@ -37,9 +37,16 @@ class ProcessImportFile implements ShouldQueue
     public function handle(): void
     {
         $import = ProductImport::findOrFail($this->importId);
+
+        if (! in_array($import->status, ['pending', 'processing'], true)) {
+            return;
+        }
+
         $import->update(['status' => 'processing']);
 
         $failedChunks = 0;
+        $totalChunks = 0;
+        $truncationNote = null;
 
         try {
             $path = Storage::disk('local')->path($import->file_path);
@@ -78,6 +85,10 @@ class ProcessImportFile implements ShouldQueue
 
             $products = $this->buildProductRows($rawProducts);
 
+            if (empty($products)) {
+                throw new \RuntimeException('No se encontraron productos para importar. El archivo puede tener sólo encabezados o estar vacío. Revisalo y volvé a subirlo.');
+            }
+
             $totalChunks = count($chunks);
             $truncationNote = $chunkResult['truncated']
                 ? "El archivo es muy grande: se procesaron {$chunkResult['used']} de {$chunkResult['total']} secciones."
@@ -92,41 +103,58 @@ class ProcessImportFile implements ShouldQueue
             ]);
 
             Storage::disk('local')->delete($import->file_path);
+        } catch (\Throwable $e) {
+            $this->markImportFailed($import, $e);
 
-            $body = "Se encontraron {$import->product_count} productos en {$import->filename}.";
-            if ($failedChunks > 0) {
-                $body .= ' Se procesaron '.($totalChunks - $failedChunks)." de {$totalChunks} secciones; revisá el log para más detalle.";
-            }
-            if ($truncationNote) {
-                $body .= ' '.$truncationNote;
-            }
-
-            Notification::make()
-                ->title('Importación lista')
-                ->body($body)
-                ->success()
-                ->actions([
-                    Action::make('ver')
-                        ->label('Revisar')
-                        ->url(ValidarImport::getUrl(['id' => $import->id]))
-                        ->button(),
-                ])
-                ->sendToDatabase($import->user);
+            return;
         }
+
+        $body = "Se encontraron {$import->product_count} productos en {$import->filename}.";
+        if ($failedChunks > 0) {
+            $body .= ' Se procesaron '.($totalChunks - $failedChunks)." de {$totalChunks} secciones; revisá el log para más detalle.";
+        }
+        if ($truncationNote) {
+            $body .= ' '.$truncationNote;
+        }
+
+        Notification::make()
+            ->title('Importación lista')
+            ->body($body)
+            ->success()
+            ->actions([
+                Action::make('ver')
+                    ->label('Revisar')
+                    ->url(ValidarImport::getUrl(['id' => $import->id]))
+                    ->button(),
+            ])
+            ->sendToDatabase($import->user);
     }
 
     public function failed(\Throwable $e): void
     {
         $import = ProductImport::find($this->importId);
 
-        if (! $import) {
+        if (! $import || ! in_array($import->status, ['pending', 'processing'], true)) {
             return;
         }
 
+        $this->markImportFailed($import, $e);
+    }
+
+    private function markImportFailed(ProductImport $import, \Throwable $e): void
+    {
         $import->update([
             'status' => 'error',
             'error_message' => $e->getMessage(),
         ]);
+
+        try {
+            if ($import->file_path && Storage::disk('local')->exists($import->file_path)) {
+                Storage::disk('local')->delete($import->file_path);
+            }
+        } catch (\Throwable $ignored) {
+            // Best-effort cleanup.
+        }
 
         if ($import->user) {
             Notification::make()
@@ -299,6 +327,7 @@ PROMPT;
 
         $seenNames = [];
         $seenBarcodes = [];
+        $seenSkus = [];
         $rows = [];
 
         foreach ($rawProducts as $item) {
@@ -309,19 +338,29 @@ PROMPT;
             }
 
             $barcode = trim($item['barcode'] ?? '');
+            $sku = trim($item['sku'] ?? '');
             $normalizedName = Str::lower($name);
 
             $internalDuplicate = isset($seenNames[$normalizedName])
-                || ($barcode !== '' && isset($seenBarcodes[$barcode]));
+                || ($barcode !== '' && isset($seenBarcodes[$barcode]))
+                || ($sku !== '' && isset($seenSkus[$sku]));
 
             $seenNames[$normalizedName] = true;
             if ($barcode !== '') {
                 $seenBarcodes[$barcode] = true;
             }
+            if ($sku !== '') {
+                $seenSkus[$sku] = true;
+            }
 
-            $existing = $barcode !== ''
-                ? Product::where('barcode', $barcode)->first()
-                : Product::whereRaw('LOWER(name) = ?', [$normalizedName])->first();
+            // No todos los proveedores usan código de barras: si el archivo solo trae
+            // un código interno (sku), lo tratamos igual de válido para detectar que
+            // el producto ya existe.
+            $existing = match (true) {
+                $barcode !== '' => Product::where('barcode', $barcode)->first(),
+                $sku !== '' => Product::where('sku', $sku)->first(),
+                default => Product::whereRaw('LOWER(name) = ?', [$normalizedName])->first(),
+            };
 
             $costPrice = max(0, (float) ($item['cost_price'] ?? 0));
             $salePrice = max(0, (float) ($item['sale_price'] ?? 0));
@@ -352,7 +391,7 @@ PROMPT;
                 'existing_sale_price' => $existingSalePrice,
                 'price_direction' => $priceDirection,
                 'name' => $name,
-                'sku' => trim($item['sku'] ?? ''),
+                'sku' => $sku,
                 'barcode' => $barcode,
                 'unit' => ProductUnitNormalizer::normalize($item['unit'] ?? null),
                 'cost_price' => $costPrice,

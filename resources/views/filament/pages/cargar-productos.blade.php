@@ -92,14 +92,49 @@
                         <div class="imp-processing-list">
                             @foreach ($this->processingImports as $import)
                                 <div class="imp-processing-item">
-                                    <x-filament::loading-indicator class="h-4 w-4" />
-                                    <div>
+                                    <x-filament::loading-indicator class="h-4 w-4 shrink-0" />
+                                    <div class="imp-processing-item__body">
                                         <div class="imp-pending-item__name">{{ $import->filename }}</div>
                                         <div class="imp-pending-item__meta">
                                             {{ $import->status === 'pending' ? 'En cola…' : 'Analizando con IA…' }}
                                             · {{ $import->created_at?->diffForHumans() }}
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="imp-queue-dismiss"
+                                        wire:click="cancelProcessingImport({{ $import->id }})"
+                                        wire:confirm="¿Cancelar el análisis de este archivo?"
+                                        title="Cancelar"
+                                    >
+                                        <x-filament::icon icon="heroicon-o-x-mark" class="h-4 w-4" />
+                                        <span class="sr-only">Cancelar</span>
+                                    </button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if ($this->failedImports->isNotEmpty())
+                        <div class="imp-failed-list">
+                            @foreach ($this->failedImports as $import)
+                                <div class="imp-failed-item">
+                                    <div class="imp-processing-item__body">
+                                        <div class="imp-pending-item__name">{{ $import->filename }}</div>
+                                        <div class="imp-pending-item__meta">
+                                            No se pudo procesar
+                                            · {{ $import->updated_at?->diffForHumans() }}
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="imp-queue-dismiss"
+                                        wire:click="dismissFailedImport({{ $import->id }})"
+                                        title="Ocultar"
+                                    >
+                                        <x-filament::icon icon="heroicon-o-x-mark" class="h-4 w-4" />
+                                        <span class="sr-only">Ocultar</span>
+                                    </button>
                                 </div>
                             @endforeach
                         </div>
@@ -129,7 +164,7 @@
                                 </div>
                             @endforeach
                         </div>
-                    @elseif ($this->processingImports->isEmpty())
+                    @elseif ($this->processingImports->isEmpty() && $this->failedImports->isEmpty())
                         <div class="imp-empty">
                             <x-filament::icon icon="heroicon-o-inbox" style="width:2rem;height:2rem;color:#a1a1aa;margin-bottom:0.25rem;" />
                             <p class="imp-empty__title">Nada pendiente</p>

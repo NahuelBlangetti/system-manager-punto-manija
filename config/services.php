@@ -51,6 +51,7 @@ return [
     'import' => [
         'max_chunks' => (int) env('IMPORT_MAX_CHUNKS', 25),
         'chunk_size' => (int) env('IMPORT_CHUNK_SIZE', 4000),
+        'stale_after_minutes' => (int) env('IMPORT_STALE_AFTER_MINUTES', 15),
     ],
 
 ];

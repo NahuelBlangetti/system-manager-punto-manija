@@ -84,6 +84,7 @@
                                     <th class="imp-col-price">Precio venta</th>
                                     <th class="imp-col-price">Precio costo</th>
                                     <th class="imp-col-stock">Stock</th>
+                                    <th class="imp-col-sku">SKU</th>
                                     <th class="imp-col-barcode">Cód. barras</th>
                                     <th class="imp-col-status">Estado</th>
                                     <th class="imp-col-action"></th>
@@ -159,6 +160,11 @@
                                         <td>
                                             <x-filament::input.wrapper>
                                                 <x-filament::input type="number" step="1" min="0" wire:model="products.{{ $index }}.stock" />
+                                            </x-filament::input.wrapper>
+                                        </td>
+                                        <td>
+                                            <x-filament::input.wrapper>
+                                                <x-filament::input type="text" wire:model="products.{{ $index }}.sku" />
                                             </x-filament::input.wrapper>
                                         </td>
                                         <td>

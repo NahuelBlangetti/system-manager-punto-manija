@@ -81,7 +81,14 @@ class CargarProductos extends Page implements HasForms
             ProductImport::dismissResolvedNotificationsFor($user);
         }
 
+        ProductImport::expireStale();
+
         $this->form->fill();
+    }
+
+    public function hydrate(): void
+    {
+        ProductImport::expireStale();
     }
 
     public function form(Schema $schema): Schema
@@ -134,6 +141,45 @@ class CargarProductos extends Page implements HasForms
             ->get();
     }
 
+    #[Computed]
+    public function failedImports()
+    {
+        return ProductImport::where('user_id', Auth::id())
+            ->where('status', 'error')
+            ->latest()
+            ->limit(10)
+            ->get();
+    }
+
+    public function cancelProcessingImport(int $id): void
+    {
+        $import = ProductImport::query()
+            ->where('user_id', Auth::id())
+            ->whereKey($id)
+            ->whereIn('status', ['pending', 'processing'])
+            ->first();
+
+        $import?->markAsStuck('Cancelado por el usuario.', 'cancelled');
+
+        unset($this->processingImports, $this->failedImports, $this->pendingImports);
+
+        Notification::make()
+            ->title('Importación cancelada')
+            ->success()
+            ->send();
+    }
+
+    public function dismissFailedImport(int $id): void
+    {
+        ProductImport::query()
+            ->where('user_id', Auth::id())
+            ->whereKey($id)
+            ->where('status', 'error')
+            ->update(['status' => 'cancelled']);
+
+        unset($this->failedImports, $this->processingImports, $this->pendingImports);
+    }
+
     private function resolveUploadedFile(): ?TemporaryUploadedFile
     {
         $file = $this->importFile;
@@ -165,7 +211,7 @@ class CargarProductos extends Page implements HasForms
 
         $duplicate = ProductImport::where('user_id', Auth::id())
             ->where('file_hash', $hash)
-            ->where('status', '!=', 'error')
+            ->whereNotIn('status', ['error', 'cancelled'])
             ->latest()
             ->first();
 
@@ -213,7 +259,7 @@ class CargarProductos extends Page implements HasForms
 
         $duplicate = ProductImport::where('user_id', Auth::id())
             ->where('file_hash', $hash)
-            ->where('status', '!=', 'error')
+            ->whereNotIn('status', ['error', 'cancelled'])
             ->latest()
             ->first();
 
@@ -237,7 +283,7 @@ class CargarProductos extends Page implements HasForms
 
         $this->reset(['importFile', 'importSupplierId', 'supplierAutoDetectedName', 'originalFilename', 'hasDuplicate', 'duplicateImportId', 'forceReprocess']);
         $this->form->fill();
-        unset($this->pendingImports);
+        unset($this->pendingImports, $this->processingImports, $this->failedImports);
 
         Notification::make()
             ->title('Archivo encolado')
