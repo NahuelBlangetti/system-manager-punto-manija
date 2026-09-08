@@ -15,6 +15,7 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -92,8 +93,24 @@ class ValidarImport extends Page implements HasForms
         }
 
         $this->import = $import;
-        $this->products = $import->products ?? [];
+        $this->products = $this->sortUpdatesFirst($import->products ?? []);
         $this->form->fill(['importSupplierId' => $import->supplier_id]);
+    }
+
+    /**
+     * Las actualizaciones de productos ya conocidos van primero; las altas
+     * nuevas (que requieren revisar nombre, precio y categoría desde cero)
+     * quedan al final.
+     */
+    private function sortUpdatesFirst(array $products): array
+    {
+        usort(
+            $products,
+            fn (array $a, array $b) => (($a['action'] ?? 'create') === 'create' ? 1 : 0)
+                <=> (($b['action'] ?? 'create') === 'create' ? 1 : 0)
+        );
+
+        return $products;
     }
 
     private function rejectImport(string $title, string $body): void
@@ -201,55 +218,121 @@ class ValidarImport extends Page implements HasForms
             return;
         }
 
+        // Última verificación contra el estado actual de la base: si al revisar
+        // el archivo una fila quedó marcada como "nuevo" pero su sku o código de
+        // barras YA existe ahora en el catálogo (típico de una recarga mensual
+        // de stock donde el nombre del producto cambió un poco y el matching por
+        // nombre no lo reconoció), la tratamos como actualización de precio en
+        // vez de intentar insertarla de nuevo. No tiene sentido perder el dato
+        // porque el nombre no calzó exacto.
+        $barcodesToCheck = collect($selected)
+            ->map(fn ($row) => trim((string) ($row['barcode'] ?? '')))
+            ->filter()
+            ->unique();
+
+        $skusToCheck = collect($selected)
+            ->map(fn ($row) => trim((string) ($row['sku'] ?? '')))
+            ->filter()
+            ->unique();
+
+        $existingByBarcode = Product::whereIn('barcode', $barcodesToCheck)->pluck('id', 'barcode');
+        $existingBySku = Product::whereIn('sku', $skusToCheck)->pluck('id', 'sku');
+
         $created = 0;
         $updated = 0;
+        $skippedDuplicates = [];
         $now = now();
 
-        DB::transaction(function () use ($selected, $now, &$created, &$updated) {
-            $createRows = [];
+        try {
+            DB::transaction(function () use ($selected, $now, &$created, &$updated, &$skippedDuplicates, $existingByBarcode, $existingBySku) {
+                $createRows = [];
+                $seenBarcodes = [];
+                $seenSkus = [];
 
-            foreach ($selected as $row) {
-                if ($row['action'] === 'update' && ! empty($row['existing_product_id'])) {
-                    Product::where('id', $row['existing_product_id'])->update([
+                foreach ($selected as $row) {
+                    $barcode = trim((string) ($row['barcode'] ?? ''));
+                    $sku = trim((string) ($row['sku'] ?? ''));
+
+                    $existingProductId = ! empty($row['existing_product_id'])
+                        ? $row['existing_product_id']
+                        : (($barcode !== '' ? $existingByBarcode[$barcode] ?? null : null)
+                            ?? ($sku !== '' ? $existingBySku[$sku] ?? null : null));
+
+                    if ($existingProductId) {
+                        Product::where('id', $existingProductId)->update([
+                            'name' => $row['name'],
+                            'sku' => $sku ?: null,
+                            'barcode' => $barcode ?: null,
+                            'unit' => $row['unit'],
+                            'cost_price' => $row['cost_price'],
+                            'sale_price' => $row['sale_price'],
+                            'stock' => (int) $row['stock'],
+                            'category_id' => $row['category_id'] ?: null,
+                            'supplier_id' => $this->importSupplierId,
+                            'updated_at' => $now,
+                        ]);
+                        $updated++;
+
+                        continue;
+                    }
+
+                    // A esta altura no hay ningún producto existente con ese código:
+                    // lo único que queda por descartar es que dos filas NUEVAS del
+                    // propio archivo compartan el mismo código entre sí (error de
+                    // carga del proveedor) — eso sí hay que avisarlo, no hay con qué
+                    // actualizar.
+                    $duplicateCode = match (true) {
+                        $barcode !== '' && isset($seenBarcodes[$barcode]) => "código de barras \"{$barcode}\"",
+                        $sku !== '' && isset($seenSkus[$sku]) => "SKU \"{$sku}\"",
+                        default => null,
+                    };
+
+                    if ($duplicateCode) {
+                        $skippedDuplicates[] = "{$row['name']} ({$duplicateCode} repetido en el archivo)";
+
+                        continue;
+                    }
+
+                    if ($barcode !== '') {
+                        $seenBarcodes[$barcode] = true;
+                    }
+                    if ($sku !== '') {
+                        $seenSkus[$sku] = true;
+                    }
+
+                    $createRows[] = [
                         'name' => $row['name'],
-                        'sku' => $row['sku'] ?: null,
-                        'barcode' => $row['barcode'] ?: null,
+                        'sku' => $sku ?: null,
+                        'barcode' => $barcode ?: null,
                         'unit' => $row['unit'],
                         'cost_price' => $row['cost_price'],
                         'sale_price' => $row['sale_price'],
                         'stock' => (int) $row['stock'],
+                        'min_stock' => 0,
                         'category_id' => $row['category_id'] ?: null,
                         'supplier_id' => $this->importSupplierId,
+                        'active' => true,
+                        'created_at' => $now,
                         'updated_at' => $now,
-                    ]);
-                    $updated++;
-
-                    continue;
+                    ];
                 }
 
-                $createRows[] = [
-                    'name' => $row['name'],
-                    'sku' => $row['sku'] ?: null,
-                    'barcode' => $row['barcode'] ?: null,
-                    'unit' => $row['unit'],
-                    'cost_price' => $row['cost_price'],
-                    'sale_price' => $row['sale_price'],
-                    'stock' => (int) $row['stock'],
-                    'min_stock' => 0,
-                    'category_id' => $row['category_id'] ?: null,
-                    'supplier_id' => $this->importSupplierId,
-                    'active' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
+                foreach (array_chunk($createRows, 200) as $chunk) {
+                    DB::table('products')->insert($chunk);
+                }
 
-            foreach (array_chunk($createRows, 200) as $chunk) {
-                DB::table('products')->insert($chunk);
-            }
+                $created = count($createRows);
+            });
+        } catch (QueryException $e) {
+            Notification::make()
+                ->title('No se pudo guardar la importación')
+                ->body('El archivo tiene un SKU o código de barras que ya existe en el catálogo. Esto es un problema del archivo del proveedor, no del sistema: corregí ese código y volvé a intentar. No se guardó ningún producto de este lote.')
+                ->danger()
+                ->persistent()
+                ->send();
 
-            $created = count($createRows);
-        });
+            return;
+        }
 
         $this->import->update(['status' => 'validated']);
         $this->import->dismissReviewNotifications();
@@ -258,6 +341,21 @@ class ValidarImport extends Page implements HasForms
             ->title("{$created} creado(s), {$updated} actualizado(s)")
             ->success()
             ->send();
+
+        if (! empty($skippedDuplicates)) {
+            Notification::make()
+                ->title('Se omitieron productos por código repetido en el archivo')
+                ->body(
+                    'Esto es un problema del archivo del proveedor, no del sistema. '
+                    .count($skippedDuplicates).' producto(s) no se crearon: '
+                    .implode(', ', array_slice($skippedDuplicates, 0, 5))
+                    .(count($skippedDuplicates) > 5 ? '…' : '')
+                    .'. Corregí el código con el proveedor y volvé a cargarlos si hace falta.'
+                )
+                ->warning()
+                ->persistent()
+                ->send();
+        }
 
         $this->redirect(CargarProductos::getUrl());
     }
