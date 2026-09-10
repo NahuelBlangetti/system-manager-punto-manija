@@ -54,6 +54,10 @@ class AdminPanelProvider extends PanelProvider
             })
             ->databaseNotifications()
             ->renderHook(
+                PanelsRenderHook::HEAD_START,
+                fn (): string => '<meta name="robots" content="noindex, nofollow">'."\n",
+            )
+            ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.partials.print-agent-listener')->render(),
             )

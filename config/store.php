@@ -3,7 +3,7 @@
 return [
     'name' => env('APP_NAME', 'Punto Manija'),
     'whatsapp' => env('STORE_WHATSAPP', ''),
-    'address' => env('STORE_ADDRESS', ''),
+    'address' => env('STORE_ADDRESS', 'Avenida Fuerza Aérea 3423, Córdoba'),
     'maps_url' => env('STORE_MAPS_URL', ''),
     'instagram' => env('STORE_INSTAGRAM', ''),
 
@@ -29,6 +29,13 @@ return [
     ],
 
     'catalog' => [
+        'site_name' => 'Punto Manija',
+        'page_title' => 'Punto Manija | Bebidas, combos y perfumes en Córdoba',
+        'meta_description' => 'Kiosco en Av. Fuerza Aérea 3423, Córdoba (Ruta 20). Combos, bebidas, perfumes árabes y más. Pedí por el catálogo o WhatsApp.',
+        'og_image' => 'images/punto-manija-icon.jpg',
+        'schema_type' => 'ConvenienceStore',
+        'geo_region' => 'AR-X',
+        'geo_placename' => 'Córdoba',
         'tagline' => 'Córdoba · Ruta 20 · Abierto cuando la noche lo pide',
         'hero_title' => 'Tu noche empieza acá',
         'hero_subtitle' => 'Elegí categoría, armá el carrito y pedí por WhatsApp.',

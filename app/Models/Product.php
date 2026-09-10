@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 #[ObservedBy(ProductObserver::class)]
 class Product extends Model
@@ -20,6 +21,7 @@ class Product extends Model
         'category_id',
         'supplier_id',
         'name',
+        'slug',
         'sku',
         'barcode',
         'imei',
@@ -45,6 +47,39 @@ class Product extends Model
         'active' => 'boolean',
         'is_combo' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Product $product) {
+            if (blank($product->slug) || $product->isDirty('name')) {
+                $product->slug = static::uniqueSlug((string) $product->name, $product->id);
+            }
+        });
+    }
+
+    public static function uniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name) ?: 'producto';
+        $slug = $base;
+        $i = 2;
+
+        while (
+            static::withTrashed()
+                ->where('slug', $slug)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = $base.'-'.$i;
+            $i++;
+        }
+
+        return $slug;
+    }
+
+    public function getPublicUrlAttribute(): string
+    {
+        return route('marketplace.product', $this->slug ?: $this->id);
+    }
 
     public function getImageUrlAttribute(): ?string
     {

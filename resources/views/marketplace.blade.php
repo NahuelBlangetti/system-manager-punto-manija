@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Punto Manija — Catálogo</title>
+    @include('partials.marketplace-seo')
     <link rel="icon" type="image/png" href="{{ asset('images/punto-manija-mascot.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -394,6 +394,25 @@
             line-height: 1;
         }
 
+        .pm-pdp {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        @media (min-width: 768px) {
+            .pm-pdp { grid-template-columns: 1fr 1fr; align-items: start; gap: 2rem; }
+        }
+        .pm-pdp__media {
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: var(--placeholder-bg);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+        .pm-pdp__media img { width: 100%; height: 100%; object-fit: cover; }
+        .pm-pdp__title { font-size: clamp(1.75rem, 4vw, 2.5rem); line-height: 1.05; }
+
         /* ── Chips ── */
         .pm-chip {
             background: var(--tertiary-fixed);
@@ -701,7 +720,7 @@
 @php
     $storeDisplayName = 'PUNTO MANIJA';
     $catalog = config('store.catalog', []);
-    $showHero = $browsingCategories ?? (! $search && ! $activeCategory);
+    $showHero = ($browsingCategories ?? false) && ! ($productDetail ?? null);
     $categoryImages = $catalog['category_images'] ?? [];
     $shippingRates = \App\Services\Shipping\ShippingSettings::all();
     $shippingConfig = [
@@ -860,10 +879,7 @@
                 <img src="{{ asset('images/punto-manija-logo.png') }}" alt="Punto Manija" class="pm-logo-img">
             </a>
 
-            <form method="GET" action="/" class="flex-1 max-w-md">
-                @if($selectedCategory)
-                    <input type="hidden" name="category" value="{{ $selectedCategory }}">
-                @endif
+            <form method="GET" action="{{ ($prettyCategory ?? false) && $activeCategory ? route('marketplace.category', $activeCategory) : url('/') }}" class="flex-1 max-w-md">
                 <div class="relative">
                     <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -923,6 +939,80 @@
 
 <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+@if($productDetail ?? null)
+    @php
+        $pdpJson = json_encode([
+            'id' => $productDetail->id,
+            'name' => $productDetail->name,
+            'price' => (float) $productDetail->sale_price,
+            'maxStock' => $productDetail->stock,
+            'image' => $productDetail->image_url ?? '',
+        ]);
+        $pdpBack = $productDetail->category?->public_url ?? url('/');
+    @endphp
+    <div class="mb-6">
+        <a href="{{ $pdpBack }}" class="inline-flex items-center gap-2 text-sm font-label text-primary hover:underline">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+            {{ $productDetail->category?->name ? 'Volver a '.$productDetail->category->name : 'Volver a Punto Manija' }}
+        </a>
+    </div>
+    <article class="pm-pdp">
+        <div class="pm-pdp__media">
+            @if($productDetail->image_url)
+                <img src="{{ $productDetail->image_url }}" alt="{{ $productDetail->name }}">
+            @else
+                <div class="product-card__placeholder">
+                    <svg class="w-16 h-16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+            @endif
+        </div>
+        <div>
+            @if($productDetail->category)
+                <a href="{{ $productDetail->category->public_url }}" class="pm-chip pm-chip--category px-2 py-0.5 mb-3 inline-block">{{ $productDetail->category->name }}</a>
+            @endif
+            <h1 class="font-headline uppercase text-on-surface pm-pdp__title">{{ $productDetail->name }}</h1>
+            @if($productDetail->description)
+                <p class="text-sm text-muted mt-4 leading-relaxed">{{ $productDetail->description }}</p>
+            @endif
+            <div class="mt-6 flex items-center justify-between gap-3">
+                <span class="product-card__price" style="font-size:1.85rem">${{ number_format($productDetail->sale_price, 0, ',', '.') }}</span>
+                @if($productDetail->stock <= 0)
+                    <span class="pm-chip pm-chip--out px-2 py-0.5">Sin stock</span>
+                @else
+                    <span class="pm-chip pm-chip--stock px-2 py-0.5">En stock</span>
+                @endif
+            </div>
+            @if($productDetail->stock > 0)
+                <button x-on:click="add({{ $pdpJson }})"
+                        class="pm-btn-primary mt-6 w-full flex items-center justify-center gap-2 text-sm py-3.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Agregar al pedido
+                </button>
+            @else
+                <button disabled class="mt-6 w-full text-xs font-label py-3.5 rounded-lg bg-disabled cursor-not-allowed border-2 border-muted">
+                    Sin stock
+                </button>
+            @endif
+        </div>
+    </article>
+    @if(($related ?? collect())->isNotEmpty())
+        <div class="pm-section-head mb-5">
+            <h2 class="font-headline uppercase text-on-surface">También te puede gustar</h2>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            @foreach($related as $product)
+                @include('marketplace.partials.product-card', ['product' => $product])
+            @endforeach
+        </div>
+    @endif
+@else
+
     {{-- Vista principal: explorar por categoría --}}
     @if($browsingCategories)
     <section id="catalogo" class="mb-10 scroll-mt-24">
@@ -943,7 +1033,7 @@
                 @php
                     $thumb = $categoryThumbnails[$category->id] ?? ($categoryImages[$category->name] ?? null);
                 @endphp
-                <a href="{{ request()->fullUrlWithQuery(['category' => $category->id, 'search' => null]) }}"
+                <a href="{{ $category->public_url }}"
                    class="pm-category-card group">
                     <div class="pm-category-card__img-wrap">
                         @if($thumb)
@@ -985,10 +1075,10 @@
     @if($search || $activeCategory)
     <div class="mb-6">
         @if($search)
-            <h2 class="font-headline text-2xl uppercase text-on-surface">Resultados para «{{ $search }}»</h2>
+            <h1 class="font-headline text-2xl uppercase text-on-surface">Resultados para «{{ $search }}»</h1>
             <p class="text-sm text-muted mt-1">{{ $products->count() }} producto{{ $products->count() !== 1 ? 's' : '' }} encontrado{{ $products->count() !== 1 ? 's' : '' }}</p>
         @elseif($activeCategory)
-            <h2 class="font-headline text-2xl uppercase text-on-surface">{{ $activeCategory->name }}</h2>
+            <h1 class="font-headline text-2xl uppercase text-on-surface">{{ $activeCategory->name }}</h1>
             @if($activeCategory->description)
                 <p class="text-sm text-muted mt-1 max-w-2xl leading-relaxed">{{ $activeCategory->description }}</p>
             @else
@@ -1002,7 +1092,7 @@
     @if($activeCategory || $search)
     <div class="pm-chip-scroll">
         @foreach($categories as $category)
-            <a href="{{ request()->fullUrlWithQuery(['category' => $category->id, 'search' => null, 'page' => null]) }}"
+            <a href="{{ \App\Support\MarketplaceSeo::catalogUrl($category, null) }}"
                class="filter-chip px-4 py-2 text-xs {{ $selectedCategory == $category->id ? 'filter-chip--active' : '' }}">
                 {{ $category->name }}
                 <span class="ml-1 opacity-70">{{ $category->products_count }}</span>
@@ -1030,72 +1120,13 @@
     @else
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
             @foreach($products as $product)
-                @php $productJson = json_encode([
-                    'id'       => $product->id,
-                    'name'     => $product->name,
-                    'price'    => (float) $product->sale_price,
-                    'maxStock' => $product->stock,
-                    'image'    => $product->image_url ?? '',
-                ]) @endphp
-                <div class="product-card pm-card overflow-hidden flex flex-col">
-
-                    <div class="product-card__media">
-                        @if($product->image_url)
-                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}"
-                                 class="product-img w-full h-full object-cover"
-                                 loading="lazy"
-                                 onerror="this.style.display='none'; this.parentElement.insertAdjacentHTML('beforeend','<div class=\'product-card__placeholder\'><svg class=\'w-12 h-12\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' viewBox=\'0 0 24 24\'><path stroke-linecap=\'round\' stroke-linejoin=\'round\' d=\'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z\'/></svg></div>')">
-                        @else
-                            <div class="product-card__placeholder">
-                                <svg class="w-12 h-12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                            </div>
-                        @endif
-                    </div>
-
-                    <div class="p-3 flex flex-col flex-1">
-                        @if($product->category)
-                            <span class="pm-chip pm-chip--category px-2 py-0.5 mb-1.5 self-start">{{ $product->category->name }}</span>
-                        @endif
-                        <h3 class="text-sm font-semibold text-on-surface leading-tight">{{ $product->name }}</h3>
-                        @if($product->description)
-                            <p class="text-[11px] text-muted mt-1 line-clamp-2 leading-snug flex-1">{{ $product->description }}</p>
-                        @else
-                            <div class="flex-1"></div>
-                        @endif
-
-                        <div class="mt-2.5 flex items-center justify-between gap-2">
-                            <span class="product-card__price">
-                                ${{ number_format($product->sale_price, 0, ',', '.') }}
-                            </span>
-                            @if($product->stock <= 0)
-                                <span class="pm-chip pm-chip--out px-2 py-0.5">Sin stock</span>
-                            @else
-                                <span class="pm-chip pm-chip--stock px-2 py-0.5">En stock</span>
-                            @endif
-                        </div>
-
-                        @if($product->stock > 0)
-                            <button x-on:click="add({{ $productJson }})"
-                                    class="pm-btn-primary mt-3 w-full flex items-center justify-center gap-2 text-xs py-2.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                                </svg>
-                                Agregar
-                            </button>
-                        @else
-                            <button disabled class="mt-3 w-full text-xs font-label py-2.5 rounded-lg bg-disabled cursor-not-allowed border-2 border-muted">
-                                Sin stock
-                            </button>
-                        @endif
-                    </div>
-                </div>
+                @include('marketplace.partials.product-card', ['product' => $product])
             @endforeach
         </div>
     @endif
 
     @endif {{-- fin browsingCategories --}}
+@endif {{-- fin productDetail --}}
 
 </main>
 
