@@ -4,7 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Enums\ProductDiscountType;
 use App\Enums\PromotionType;
-use App\Filament\Actions\ConfigurePrinterAction;
 use App\Models\CashRegister;
 use App\Models\Product;
 use App\Models\Promotion;
@@ -15,7 +14,6 @@ use App\Services\Stock\ComboStockService;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
 use App\Support\EscPosPrint;
 use BackedEnum;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -44,16 +42,6 @@ class CrearVenta extends Page
         $user = Auth::user();
 
         return $user instanceof User && ! $user->isDelivery();
-    }
-
-    /**
-     * @return array<Action>
-     */
-    protected function getHeaderActions(): array
-    {
-        return [
-            ConfigurePrinterAction::make(),
-        ];
     }
 
     public string $productQuery = '';

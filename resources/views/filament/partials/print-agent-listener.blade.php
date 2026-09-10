@@ -6,6 +6,11 @@
     fetch al agente. Tickets de venta y etiquetas de producto usan el mismo
     evento y la misma impresora de tickets — no hay impresora Zebra/ZPL en
     este proyecto.
+
+    La impresora está hardcodeada a "POS-80C" (nombre exacto tal cual
+    aparece instalada en Windows): no hay selección manual ni
+    autodetección por guessed_type. Si el modelo de impresora cambia de
+    nuevo, hay que actualizar el nombre acá.
 --}}
 @once
     <script>
@@ -16,33 +21,13 @@
         });
 
         {{--
-            Si el usuario ya eligió una impresora a mano, se respeta esa
-            elección. Si no, se detecta sola por nombre (guessed_type que
-            calcula el agente vía app/services/printer_classifier.py) en
-            vez de obligar a configurar antes de poder imprimir.
+            Impresora fija: no hay selección manual (se sacó la pantalla
+            "Configurar impresora") ni autodetección por guessed_type. Tiene
+            que coincidir exactamente con el nombre con el que Windows tiene
+            instalada la impresora.
         --}}
-        window.resolvePrinterByType = async function (agentUrl, type, savedKey) {
-            const saved = localStorage.getItem(savedKey);
-            if (saved) {
-                return saved;
-            }
-
-            try {
-                const res = await fetch(`${agentUrl}/printers`);
-                if (!res.ok) return null;
-                const data = await res.json();
-                const list = Array.isArray(data) ? data : (data.printers ?? []);
-                const candidates = list.filter((p) => p.guessed_type === type);
-                if (candidates.length === 0) return null;
-                const preferred = candidates.find((p) => p.is_default) ?? candidates[0];
-                return preferred.name;
-            } catch (e) {
-                return null;
-            }
-        };
-
-        window.resolveTicketPrinter = async function (agentUrl) {
-            return window.resolvePrinterByType(agentUrl, 'ticket', 'ticket_printer_name');
+        window.resolveTicketPrinter = async function () {
+            return 'POS-80C';
         };
 
         {{--
