@@ -8,18 +8,13 @@ use App\Models\SaleItem;
 class SaleTicketEscPosBuilder
 {
     /**
-     * Modelo nuevo (2026): mismo tipo de clon que el anterior pero de 80 mm
-     * de papel, ~576 puntos de ancho (384 → 576 respecto al modelo viejo de
-     * 58 mm). En fuente A (12x24 puntos) entrarían 576 / 12 = 48 caracteres
-     * por línea — mismo valor que dio Carnicería al medir empíricamente su
-     * impresora de 80 mm. Falta confirmar contra esta impresora real al
-     * instalarla (imprimir una regla de dígitos sin saltos de línea y
-     * contar dónde corta el firmware, como se hizo en Carnicería). A doble
-     * ancho el texto queda demasiado grande y corta palabras a la mitad,
-     * así que solo se usa negrita/doble alto (sin duplicar el ancho) para
-     * destacar.
+     * Impresora POS-80 (clon OCPP-58H) de 58/60 mm de papel, ~384 puntos
+     * de ancho. En fuente A (12x24 puntos, la fuente estándar) entran
+     * 384 / 12 = 32 caracteres por línea. A doble ancho el texto queda
+     * demasiado grande y corta palabras a la mitad, así que solo se usa
+     * negrita/doble alto (sin duplicar el ancho) para destacar.
      */
-    private const WIDTH = 48;
+    private const WIDTH = 32;
 
     private const BOLD = 8;
 

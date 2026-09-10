@@ -8,17 +8,12 @@ use InvalidArgumentException;
 class ProductLabelEscPosBuilder
 {
     /**
-     * Misma impresora que SaleTicketEscPosBuilder: modelo nuevo (2026),
-     * clon del mismo tipo que el anterior (Inkspire/OCPP-58H) pero de 80 mm
-     * de papel, ~576 puntos de ancho (384 → 576, mismo firmware problemático:
-     * sigue deformando el comando nativo "GS k", así que el símbolo se
-     * sigue dibujando en software y mandando como bitmap "GS v 0").
-     * WIDTH=48 asume fuente A de 12x24 puntos, igual que Carnicería
-     * (576 / 12 = 48) — falta confirmar empíricamente contra la impresora
-     * real al instalarla, como se hizo en Carnicería (ver su comentario en
-     * SaleTicketEscPosBuilder).
+     * Misma impresora que SaleTicketEscPosBuilder (POS-80, clon OCPP-58H):
+     * 58/60 mm de papel, ~384 puntos de ancho. El firmware del clon deforma
+     * los códigos nativos "GS k" (salen rayados / ilegibles), así que el
+     * símbolo se dibuja en software y se manda como bitmap "GS v 0".
      */
-    private const WIDTH = 48;
+    private const WIDTH = 32;
 
     private const BOLD = 8;
 
@@ -28,8 +23,8 @@ class ProductLabelEscPosBuilder
 
     private const GS = "\x1D";
 
-    /** Ancho máximo del bitmap del código (puntos). Deja márgenes en 576. */
-    private const BARCODE_MAX_DOTS = 540;
+    /** Ancho máximo del bitmap del código (puntos). Deja márgenes en 384. */
+    private const BARCODE_MAX_DOTS = 360;
 
     /** Alto del símbolo en puntos. */
     private const BARCODE_HEIGHT = 72;
@@ -150,8 +145,8 @@ class ProductLabelEscPosBuilder
         $widthBytes = (int) ceil($widthDots / 8);
         $height = self::BARCODE_HEIGHT;
 
-        // Centrar el bitmap en el ancho útil del papel (~576 dots, 80 mm).
-        $paperDots = 576;
+        // Centrar el bitmap en el ancho útil del papel (~384 dots).
+        $paperDots = 384;
         $leftPadDots = max(0, intdiv($paperDots - $widthDots, 2));
         $totalDots = $leftPadDots + $widthDots;
         $totalBytes = (int) ceil($totalDots / 8);
@@ -189,9 +184,8 @@ class ProductLabelEscPosBuilder
         $digits = preg_replace('/\D+/', '', $rawCode) ?? '';
 
         // 13 dígitos → EAN-13 aunque el dígito verificador del catálogo no
-        // cierre (pasa en imports). Si lo mandáramos como CODE39, las barras
-        // se funden y el ticket queda ilegible (pasaba en 58 mm; en 80 mm no
-        // se volvió a probar, se mantiene la regla por las dudas).
+        // cierre (pasa en imports). Si lo mandáramos como CODE39, en 58 mm
+        // las barras se funden y el ticket queda ilegible.
         if (strlen($digits) === 13 && ctype_digit($digits)) {
             return $this->ean13Modules($digits);
         }
@@ -378,11 +372,9 @@ class ProductLabelEscPosBuilder
             throw new InvalidArgumentException('El código de barras no tiene caracteres válidos para imprimir.');
         }
 
-        // CODE39 es ancho: en 58 mm más de ~12 caracteres se volvía ilegible.
-        // Límite escalado a 80 mm (384→576 dots, misma proporción); sin
-        // confirmar contra la impresora real todavía.
-        if (strlen($filtered) > 18) {
-            $filtered = substr($filtered, 0, 18);
+        // CODE39 es ancho: en 58 mm más de ~12 caracteres se vuelve ilegible.
+        if (strlen($filtered) > 12) {
+            $filtered = substr($filtered, 0, 12);
         }
 
         return $filtered;

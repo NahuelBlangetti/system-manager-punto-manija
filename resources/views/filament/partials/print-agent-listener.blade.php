@@ -7,7 +7,7 @@
     evento y la misma impresora de tickets — no hay impresora Zebra/ZPL en
     este proyecto.
 
-    La impresora está hardcodeada a "POS-80C" (nombre exacto tal cual
+    La impresora está hardcodeada a "POS-80" (nombre exacto tal cual
     aparece instalada en Windows): no hay selección manual ni
     autodetección por guessed_type. Si el modelo de impresora cambia de
     nuevo, hay que actualizar el nombre acá.
@@ -27,7 +27,7 @@
             instalada la impresora.
         --}}
         window.resolveTicketPrinter = async function () {
-            return 'POS-80C';
+            return 'POS-80';
         };
 
         {{--
