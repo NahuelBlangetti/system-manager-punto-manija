@@ -19,7 +19,8 @@ class MarketplaceSeoTest extends TestCase
         $this->assertStringContainsString('punto-manija-icon.jpg', $seo['og_image']);
         $this->assertSame('Córdoba', $seo['geo_placename']);
         $this->assertSame('ConvenienceStore', $seo['json_ld'][0]['@type']);
-        $this->assertContains('Mo-Sa 09:00-18:00', $seo['json_ld'][0]['openingHours']);
+        $this->assertContains('Mo-Fr 09:00-18:00', $seo['json_ld'][0]['openingHours']);
+        $this->assertContains('Sa 09:00-18:00', $seo['json_ld'][0]['openingHours']);
         $this->assertSame('Avenida Fuerza Aérea 3423, Córdoba', $seo['json_ld'][0]['address']['streetAddress']);
     }
 

@@ -24,7 +24,8 @@ return [
     ],
 
     'schedule' => [
-        ['label' => 'Lunes a Sábado', 'hours' => env('STORE_HOURS_WEEKDAY', '9:00 - 18:00')],
+        ['label' => 'Lunes a Viernes', 'hours' => env('STORE_HOURS_WEEKDAY', '9:00 - 18:00')],
+        ['label' => 'Sábado',          'hours' => env('STORE_HOURS_SATURDAY', env('STORE_HOURS_WEEKDAY', '9:00 - 18:00'))],
         ['label' => 'Domingo',         'hours' => env('STORE_HOURS_SUNDAY', 'Cerrado')],
     ],
 

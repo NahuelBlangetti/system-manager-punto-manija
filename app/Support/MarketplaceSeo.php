@@ -321,7 +321,13 @@ final class MarketplaceSeo
                 continue;
             }
 
-            $days = str_contains($label, 'domingo') ? 'Su' : 'Mo-Sa';
+            $days = match (true) {
+                str_contains($label, 'domingo') => 'Su',
+                str_contains($label, 'lunes') && str_contains($label, 'viernes') => 'Mo-Fr',
+                str_contains($label, 'lunes') && str_contains($label, 'sábado') => 'Mo-Sa',
+                str_contains($label, 'sábado') => 'Sa',
+                default => 'Mo-Fr',
+            };
 
             foreach (preg_split('/\s*\|\s*/', $raw) ?: [] as $range) {
                 $normalized = self::normalizeHourRange($range);

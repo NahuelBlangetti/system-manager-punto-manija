@@ -950,6 +950,17 @@
         ]);
         $pdpBack = $productDetail->category?->public_url ?? url('/');
     @endphp
+    <nav aria-label="Breadcrumb" class="mb-3">
+        <ol class="flex items-center gap-1.5 flex-wrap text-xs text-muted">
+            <li><a href="{{ url('/') }}" class="hover:text-primary hover:underline">Punto Manija</a></li>
+            @if($productDetail->category)
+                <li aria-hidden="true">/</li>
+                <li><a href="{{ $productDetail->category->public_url }}" class="hover:text-primary hover:underline">{{ $productDetail->category->name }}</a></li>
+            @endif
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" class="text-on-surface">{{ $productDetail->name }}</li>
+        </ol>
+    </nav>
     <div class="mb-6">
         <a href="{{ $pdpBack }}" class="inline-flex items-center gap-2 text-sm font-label text-primary hover:underline">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
