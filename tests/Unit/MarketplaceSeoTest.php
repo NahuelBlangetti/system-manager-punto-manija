@@ -24,6 +24,13 @@ class MarketplaceSeoTest extends TestCase
         $this->assertSame('Avenida Fuerza Aérea 3423, Córdoba', $seo['json_ld'][0]['address']['streetAddress']);
     }
 
+    public function test_application_timezone_is_argentina_cordoba(): void
+    {
+        $this->assertSame('America/Argentina/Cordoba', config('app.timezone'));
+        $this->assertSame('America/Argentina/Cordoba', now()->timezoneName);
+        $this->assertSame(-10800, now()->offset);
+    }
+
     public function test_search_and_category_views_are_noindex_with_contextual_title(): void
     {
         $search = MarketplaceSeo::forCatalog('vodka');

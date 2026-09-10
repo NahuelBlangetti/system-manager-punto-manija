@@ -230,7 +230,7 @@ Panel admin accesible en: `/admin`
 
 - **Idioma**: Todo en español (UI, validaciones, labels, seeders)
 - **Moneda**: ARS, formato `es-AR`
-- **Zona horaria**: UTC (sin configurar a Argentina — pendiente)
+- **Zona horaria**: America/Argentina/Cordoba (ART, UTC-3)
 - **Imágenes**: disco `public`, carpeta `products/`
 - **Soft deletes**: Solo en `Product` y `Sale`
 - **Admin path**: `/admin` (Filament default)
