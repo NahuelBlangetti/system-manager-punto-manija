@@ -54,4 +54,11 @@ return [
         'stale_after_minutes' => (int) env('IMPORT_STALE_AFTER_MINUTES', 15),
     ],
 
+    'print_agent' => [
+        // Nombre exacto (case-sensitive) con el que Windows tiene instalada la
+        // impresora de tickets/etiquetas. Debe coincidir tal cual con el nombre que
+        // usa el Print Agent local para encontrarla.
+        'ticket_printer' => env('PRINT_AGENT_TICKET_PRINTER', 'POS-80C'),
+    ],
+
 ];

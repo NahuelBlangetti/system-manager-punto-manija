@@ -7,10 +7,11 @@
     evento y la misma impresora de tickets — no hay impresora Zebra/ZPL en
     este proyecto.
 
-    La impresora está hardcodeada a "POS-80" (nombre exacto tal cual
-    aparece instalada en Windows): no hay selección manual ni
-    autodetección por guessed_type. Si el modelo de impresora cambia de
-    nuevo, hay que actualizar el nombre acá.
+    El nombre de la impresora viene de config('services.print_agent.ticket_printer')
+    (env PRINT_AGENT_TICKET_PRINTER, default "POS-80C"): no hay selección manual ni
+    autodetección por guessed_type. Tiene que coincidir tal cual con el nombre con el
+    que Windows tiene instalada la impresora. Si el modelo cambia o Windows la renombra,
+    alcanza con actualizar el env — no hace falta tocar código.
 --}}
 @once
     <script>
@@ -24,10 +25,11 @@
             Impresora fija: no hay selección manual (se sacó la pantalla
             "Configurar impresora") ni autodetección por guessed_type. Tiene
             que coincidir exactamente con el nombre con el que Windows tiene
-            instalada la impresora.
+            instalada la impresora. Nombre configurable vía env
+            PRINT_AGENT_TICKET_PRINTER (config/services.php).
         --}}
         window.resolveTicketPrinter = async function () {
-            return 'POS-80';
+            return @js(config('services.print_agent.ticket_printer'));
         };
 
         {{--
