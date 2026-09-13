@@ -17,7 +17,41 @@ class MarketplacePhaseOneSeoTest extends TestCase
             ->assertOk()
             ->assertSee('Disallow: /admin', false)
             ->assertSee('Sitemap:', false)
+            ->assertSee('/sitemap.xml', false)
+            ->assertSee('Content-Signal: search=yes, ai-input=yes, ai-train=no', false)
+            ->assertSee('User-agent: GPTBot', false)
+            ->assertSee('User-agent: Claude-Web', false);
+    }
+
+    public function test_llms_txt_is_plain_text_with_heading(): void
+    {
+        $this->get('/llms.txt')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSee('# Punto Manija', false)
+            ->assertSee('## Catálogo', false)
             ->assertSee('/sitemap.xml', false);
+    }
+
+    public function test_home_exposes_agent_discovery_headers(): void
+    {
+        $response = $this->get('/');
+        $links = implode(' ', $response->headers->all('Link'));
+
+        $response->assertOk()
+            ->assertHeader('Content-Signal', 'search=yes, ai-input=yes, ai-train=no');
+        $this->assertStringContainsString('rel="describedby"', $links);
+        $this->assertStringContainsString('/llms.txt', $links);
+        $this->assertStringContainsString('/sitemap.xml', $links);
+    }
+
+    public function test_home_negotiates_markdown_for_agents(): void
+    {
+        $this->get('/', ['Accept' => 'text/markdown'])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/markdown; charset=utf-8')
+            ->assertSee('# ', false)
+            ->assertDontSee('<html', false);
     }
 
     public function test_home_includes_localbusiness_json_ld(): void

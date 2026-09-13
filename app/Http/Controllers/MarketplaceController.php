@@ -4,15 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Support\MarketplaceAgent;
 use App\Support\MarketplaceSeo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class MarketplaceController extends Controller
 {
-    public function index(Request $request): View|RedirectResponse
+    public function index(Request $request): View|RedirectResponse|Response
     {
         if ($redirect = $this->legacyCategoryRedirect($request)) {
             return $redirect;
@@ -21,7 +23,7 @@ class MarketplaceController extends Controller
         return $this->catalog($request);
     }
 
-    public function category(Request $request, Category $category): View
+    public function category(Request $request, Category $category): View|Response
     {
         abort_unless(
             $category->products()->where('active', true)->exists(),
@@ -31,7 +33,7 @@ class MarketplaceController extends Controller
         return $this->catalog($request, $category);
     }
 
-    public function show(string $slug): View
+    public function show(string $slug): View|Response
     {
         $product = Product::with('category')
             ->where('active', true)
@@ -61,6 +63,10 @@ class MarketplaceController extends Controller
         $categoryThumbnails = $this->categoryThumbnails($categories);
         $seo = MarketplaceSeo::forProduct($product);
 
+        if (MarketplaceAgent::wantsMarkdown(request())) {
+            return MarketplaceAgent::markdownResponse(MarketplaceSeo::productMarkdown($product, $seo));
+        }
+
         return view('marketplace', compact(
             'products',
             'categories',
@@ -79,7 +85,7 @@ class MarketplaceController extends Controller
         ));
     }
 
-    private function catalog(Request $request, ?Category $prettyCategoryModel = null): View
+    private function catalog(Request $request, ?Category $prettyCategoryModel = null): View|Response
     {
         $categories = $this->catalogCategories();
         $search = $request->search;
@@ -123,6 +129,12 @@ class MarketplaceController extends Controller
             null,
             $prettyCategory,
         );
+
+        if (MarketplaceAgent::wantsMarkdown($request)) {
+            return MarketplaceAgent::markdownResponse(
+                MarketplaceSeo::catalogMarkdown($seo, is_string($search) ? $search : null, $activeCategory, $categories, $products)
+            );
+        }
 
         return view('marketplace', compact(
             'products',

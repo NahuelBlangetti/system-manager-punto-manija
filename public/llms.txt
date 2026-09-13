@@ -1,0 +1,15 @@
+# Punto Manija
+
+> Kiosco en Av. Fuerza Aérea 3423, Córdoba (Ruta 20). Combos, bebidas, perfumes árabes y más. Pedí por el catálogo o WhatsApp.
+
+- Dirección: Avenida Fuerza Aérea 3423, Córdoba
+- Tagline: Córdoba · Ruta 20 · Abierto cuando la noche lo pide
+
+## Catálogo
+
+El catálogo público está en la home. Las categorías con productos tienen URL propia `/categoria/{slug}` y cada producto `/producto/{slug}`.
+
+## Enlaces
+
+- [Inicio](https://puntomanija.linkiame.com/)
+- [Sitemap](https://puntomanija.linkiame.com/sitemap.xml)

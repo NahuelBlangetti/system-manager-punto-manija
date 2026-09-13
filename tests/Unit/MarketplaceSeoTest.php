@@ -54,6 +54,16 @@ class MarketplaceSeoTest extends TestCase
         $this->assertSame('ConvenienceStore', $pretty['json_ld'][0]['@type']);
     }
 
+    public function test_robots_txt_declares_ai_bots_and_content_signals(): void
+    {
+        $robots = MarketplaceSeo::robotsTxt();
+
+        $this->assertStringContainsString('User-agent: GPTBot', $robots);
+        $this->assertStringContainsString('Content-Signal: search=yes, ai-input=yes, ai-train=no', $robots);
+        $this->assertStringContainsString('Disallow: /admin', $robots);
+        $this->assertStringContainsString('/sitemap.xml', $robots);
+    }
+
     public function test_product_page_is_indexable(): void
     {
         $product = new Product([

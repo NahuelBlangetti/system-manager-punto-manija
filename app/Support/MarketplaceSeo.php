@@ -207,13 +207,137 @@ final class MarketplaceSeo
 
     public static function robotsTxt(): string
     {
-        return implode("\n", [
-            'User-agent: *',
-            'Disallow: /admin',
+        return MarketplaceAgent::robotsTxt();
+    }
+
+    public static function llmsTxt(): string
+    {
+        $siteName = (string) config('store.catalog.site_name', config('store.name'));
+        $description = (string) (
+            config('store.catalog.meta_description')
+            ?: config('store.catalog.hero_line')
+            ?: config('store.catalog.tagline')
+            ?: $siteName
+        );
+
+        $lines = [
+            '# '.$siteName,
             '',
-            'Sitemap: '.url('/sitemap.xml'),
+            '> '.$description,
             '',
-        ]);
+        ];
+
+        $address = trim((string) config('store.address'));
+        if ($address !== '') {
+            $lines[] = '- Dirección: '.$address;
+        }
+
+        $instagram = trim((string) config('store.instagram'));
+        if ($instagram !== '') {
+            $handle = ltrim($instagram, '@');
+            $lines[] = '- Instagram: https://www.instagram.com/'.$handle.'/';
+        }
+
+        $lines[] = '';
+        $lines[] = '## Catálogo';
+        $lines[] = '';
+
+        $categories = Category::query()
+            ->whereNotNull('slug')
+            ->where('slug', '!=', '')
+            ->whereHas('products', fn ($q) => $q->where('active', true))
+            ->orderBy('name')
+            ->get(['name', 'slug']);
+
+        foreach ($categories as $category) {
+            $lines[] = '- ['.$category->name.']('.route('marketplace.category', $category).')';
+        }
+
+        $lines[] = '';
+        $lines[] = '## Enlaces';
+        $lines[] = '';
+        $lines[] = '- [Inicio]('.url('/').')';
+        $lines[] = '- [Sitemap]('.url('/sitemap.xml').')';
+        $lines[] = '';
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Category>  $categories
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     */
+    public static function catalogMarkdown(
+        array $seo,
+        ?string $search,
+        ?Category $activeCategory,
+        $categories,
+        $products,
+    ): string {
+        $heading = $search
+            ? 'Resultados para '.$search
+            : ($activeCategory?->name ?: (string) ($seo['title'] ?? config('store.catalog.site_name')));
+
+        $body = ['# '.$heading, '', (string) ($seo['description'] ?? ''), ''];
+
+        if ($categories && $categories->isNotEmpty() && ! $search) {
+            $body[] = '## Categorías';
+            $body[] = '';
+            foreach ($categories as $category) {
+                if (! filled($category->slug)) {
+                    continue;
+                }
+                $body[] = '- ['.$category->name.']('.route('marketplace.category', $category).')';
+            }
+            $body[] = '';
+        }
+
+        if ($products && $products->isNotEmpty()) {
+            $body[] = '## Productos';
+            $body[] = '';
+            foreach ($products as $product) {
+                $price = number_format((float) $product->sale_price, 0, ',', '.');
+                $body[] = '- ['.$product->name.']('.$product->public_url.') — $'.$price;
+            }
+            $body[] = '';
+        }
+
+        return MarketplaceAgent::wrapMarkdown(
+            (string) ($seo['title'] ?? $heading),
+            (string) ($seo['description'] ?? ''),
+            implode("\n", $body),
+            $seo['json_ld'] ?? [],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $seo
+     */
+    public static function productMarkdown(Product $product, array $seo): string
+    {
+        $price = number_format((float) $product->sale_price, 0, ',', '.');
+        $stock = (int) $product->stock > 0 ? 'En stock' : 'Sin stock';
+        $body = [
+            '# '.$product->name,
+            '',
+            (string) ($seo['description'] ?? $product->description ?: $product->name),
+            '',
+            '- Precio: $'.$price.' ARS',
+            '- Disponibilidad: '.$stock,
+        ];
+
+        if ($product->relationLoaded('category') && $product->category?->slug) {
+            $body[] = '- Categoría: ['.$product->category->name.']('.route('marketplace.category', $product->category).')';
+        }
+
+        $body[] = '- URL: '.$product->public_url;
+
+        return MarketplaceAgent::wrapMarkdown(
+            (string) ($seo['title'] ?? $product->name),
+            (string) ($seo['description'] ?? ''),
+            implode("\n", $body),
+            $seo['json_ld'] ?? [],
+        );
     }
 
     /**

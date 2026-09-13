@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\MarketplaceAgent;
 use App\Support\MarketplaceSeo;
 use Illuminate\Http\Response;
 
@@ -9,9 +10,12 @@ class MarketplaceDiscoveryController extends Controller
 {
     public function robots(): Response
     {
-        return response(MarketplaceSeo::robotsTxt(), 200, [
-            'Content-Type' => 'text/plain; charset=UTF-8',
-        ]);
+        return MarketplaceAgent::textResponse(MarketplaceSeo::robotsTxt());
+    }
+
+    public function llms(): Response
+    {
+        return MarketplaceAgent::textResponse(MarketplaceSeo::llmsTxt());
     }
 
     public function sitemap(): Response
