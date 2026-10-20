@@ -36,12 +36,14 @@ class SalesTable
                         'cash' => 'Efectivo',
                         'transfer' => 'Transferencia',
                         'card' => 'Tarjeta',
+                        'point' => 'Posnet MP',
                         default => $state,
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'cash' => 'success',
                         'transfer' => 'info',
                         'card' => 'warning',
+                        'point' => 'primary',
                         default => 'gray',
                     }),
                 TextColumn::make('total')
@@ -73,6 +75,7 @@ class SalesTable
                         'cash' => 'Efectivo',
                         'transfer' => 'Transferencia',
                         'card' => 'Tarjeta',
+                        'point' => 'Posnet MP',
                     ]),
                 SelectFilter::make('status')
                     ->label('Estado')

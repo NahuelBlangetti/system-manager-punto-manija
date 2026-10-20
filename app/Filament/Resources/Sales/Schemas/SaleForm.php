@@ -30,6 +30,7 @@ class SaleForm
                             'cash' => 'Efectivo',
                             'transfer' => 'Transferencia',
                             'card' => 'Tarjeta',
+                            'point' => 'Posnet MP',
                         ])
                         ->required()
                         ->disabled(fn ($record) => $record?->status === 'completed'),

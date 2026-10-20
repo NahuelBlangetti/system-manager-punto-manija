@@ -33,9 +33,12 @@ class ComboStockService
     }
 
     /**
+     * @param  bool  $allowNegative  true cuando la venta ya fue cobrada (posnet) y
+     *                               no se puede rechazar: el stock puede quedar negativo.
+     *
      * @throws \RuntimeException si no hay stock suficiente de algún componente.
      */
-    public static function deduct(Product $product, int $quantity, string $notes, Model $reference, int $userId): void
+    public static function deduct(Product $product, int $quantity, string $notes, Model $reference, int $userId, bool $allowNegative = false): void
     {
         if (! $product->is_combo) {
             self::adjust($product, -$quantity, $notes, $reference, $userId);
@@ -47,7 +50,11 @@ class ComboStockService
             $component = Product::lockForUpdate()->find($comboItem->component_product_id);
             $needed = $comboItem->quantity * $quantity;
 
-            if (! $component || $component->stock < $needed) {
+            if ($allowNegative && ! $component) {
+                continue;
+            }
+
+            if (! $component || (! $allowNegative && $component->stock < $needed)) {
                 $available = $component ? $component->stock : 0;
 
                 throw new \RuntimeException(

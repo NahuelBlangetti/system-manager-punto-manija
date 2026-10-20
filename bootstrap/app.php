@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AgentDiscoveryHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
-            \App\Http\Middleware\AgentDiscoveryHeaders::class,
+            AgentDiscoveryHeaders::class,
+        ]);
+
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/mercadopago',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

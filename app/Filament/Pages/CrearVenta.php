@@ -5,11 +5,15 @@ namespace App\Filament\Pages;
 use App\Enums\ProductDiscountType;
 use App\Enums\PromotionType;
 use App\Models\CashRegister;
+use App\Models\PointPayment;
 use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\User;
+use App\Services\MercadoPago\MercadoPagoException;
+use App\Services\MercadoPago\PointClient;
+use App\Services\MercadoPago\PointPaymentService;
+use App\Services\Sales\SaleRegistrar;
 use App\Services\Stock\ComboStockService;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
 use App\Support\EscPosPrint;
@@ -18,7 +22,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 
 class CrearVenta extends Page
@@ -61,6 +64,11 @@ class CrearVenta extends Page
     public bool $printTicket = true;
 
     public ?string $lastSaleNumber = null;
+
+    /** Cobro en curso en el posnet Mercado Pago Point (bloquea el POS). */
+    public ?int $pointPaymentId = null;
+
+    public ?string $pointError = null;
 
     public function getSubtotal(): float
     {
@@ -142,6 +150,20 @@ class CrearVenta extends Page
     public function hasCashRegisterOpen(): bool
     {
         return CashRegister::where('status', 'open')->exists();
+    }
+
+    #[Computed]
+    public function pointEnabled(): bool
+    {
+        $client = app(PointClient::class);
+
+        return $client->isConfigured() && filled($client->terminalId());
+    }
+
+    #[Computed]
+    public function pointPayment(): ?PointPayment
+    {
+        return $this->pointPaymentId ? PointPayment::find($this->pointPaymentId) : null;
     }
 
     public function updatedProductQuery(): void
@@ -342,6 +364,10 @@ class CrearVenta extends Page
 
     public function clearCart(): void
     {
+        if ($this->pointPaymentId) {
+            return;
+        }
+
         $this->cartItems = [];
         $this->paymentMethod = '';
         $this->notes = '';
@@ -352,6 +378,10 @@ class CrearVenta extends Page
 
     public function confirmSale(): void
     {
+        if ($this->pointPaymentId) {
+            return;
+        }
+
         if (empty($this->cartItems)) {
             Notification::make()->title('El carrito está vacío')->warning()->send();
 
@@ -377,59 +407,14 @@ class CrearVenta extends Page
             return;
         }
 
-        $sale = null;
+        if ($this->paymentMethod === 'point') {
+            $this->startPointPayment($cashRegister);
+
+            return;
+        }
 
         try {
-            DB::transaction(function () use ($cashRegister, &$sale) {
-                $products = [];
-
-                foreach ($this->cartItems as $item) {
-                    $product = Product::lockForUpdate()->find($item['product_id']);
-                    $available = $product ? ComboStockService::availableStock($product) : 0;
-
-                    if (! $product || $available < $item['quantity']) {
-                        throw new \RuntimeException(
-                            "Stock insuficiente para \"{$item['name']}\". ".
-                            "Disponible: {$available} {$item['unit']}. ".
-                            "En carrito: {$item['quantity']}."
-                        );
-                    }
-
-                    $products[$item['product_id']] = $product;
-                }
-
-                $subtotal = $this->getSubtotal();
-                $discountAmount = $this->getDiscountAmount();
-                $promoDiscount = $this->getPromoDiscount();
-
-                $sale = Sale::create([
-                    'user_id' => Auth::id(),
-                    'cash_register_id' => $cashRegister->id,
-                    'payment_method' => $this->paymentMethod,
-                    'subtotal' => $subtotal,
-                    'discount' => $discountAmount,
-                    'promo_discount' => $promoDiscount,
-                    'total' => round($subtotal - $discountAmount - $promoDiscount, 2),
-                    'notes' => $this->notes,
-                    'status' => 'completed',
-                ]);
-
-                foreach ($this->cartItems as $item) {
-                    SaleItem::create([
-                        'sale_id' => $sale->id,
-                        'product_id' => $item['product_id'],
-                        'product_name' => $item['name'],
-                        'unit_price' => $item['unit_price'],
-                        'quantity' => $item['quantity'],
-                        'subtotal' => $item['subtotal'],
-                    ]);
-
-                    $product = $products[$item['product_id']];
-                    ComboStockService::deduct($product, $item['quantity'], "Venta {$sale->sale_number}", $sale, Auth::id());
-                }
-
-                $this->lastSaleNumber = $sale->sale_number;
-            });
+            $sale = app(SaleRegistrar::class)->register($this->buildSalePayload(), $cashRegister, Auth::id());
         } catch (\RuntimeException $e) {
             Notification::make()
                 ->title('No se pudo registrar la venta')
@@ -440,6 +425,147 @@ class CrearVenta extends Page
             return;
         }
 
+        $this->afterSaleRegistered($sale);
+    }
+
+    /**
+     * Envía el total al posnet. La venta se registra recién cuando Mercado
+     * Pago confirma el pago (ver checkPointPayment y el webhook).
+     */
+    private function startPointPayment(CashRegister $cashRegister): void
+    {
+        foreach ($this->cartItems as $item) {
+            $product = Product::find($item['product_id']);
+            $available = $product ? ComboStockService::availableStock($product) : 0;
+
+            if ($available < $item['quantity']) {
+                Notification::make()
+                    ->title('No se pudo enviar el cobro')
+                    ->body("Stock insuficiente para \"{$item['name']}\". Disponible: {$available} {$item['unit']}.")
+                    ->danger()
+                    ->send();
+
+                return;
+            }
+        }
+
+        try {
+            $payment = app(PointPaymentService::class)->start($this->buildSalePayload(), $cashRegister, Auth::id());
+        } catch (MercadoPagoException $e) {
+            Notification::make()
+                ->title('No se pudo enviar el cobro al posnet')
+                ->body($e->getMessage())
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return;
+        }
+
+        $this->pointPaymentId = $payment->id;
+        $this->pointError = null;
+        unset($this->pointPayment);
+    }
+
+    /**
+     * Polling desde la vista mientras el cliente paga en el posnet.
+     */
+    public function checkPointPayment(): void
+    {
+        $payment = $this->pointPayment;
+
+        if (! $payment) {
+            $this->pointPaymentId = null;
+
+            return;
+        }
+
+        try {
+            $payment = app(PointPaymentService::class)->sync($payment);
+            $this->pointError = null;
+        } catch (\Throwable $e) {
+            report($e);
+            $this->pointError = $e->getMessage();
+
+            return;
+        } finally {
+            unset($this->pointPayment);
+        }
+
+        if ($payment->isPaid() && $payment->sale) {
+            $this->pointPaymentId = null;
+            $this->afterSaleRegistered($payment->sale, $payment);
+
+            return;
+        }
+
+        if ($payment->isFinished()) {
+            $this->pointPaymentId = null;
+
+            Notification::make()
+                ->title($payment->statusLabel())
+                ->body('La venta no se registró. Podés reintentar o elegir otro medio de pago.')
+                ->danger()
+                ->persistent()
+                ->send();
+        }
+    }
+
+    public function cancelPointPayment(): void
+    {
+        $payment = $this->pointPayment;
+
+        if (! $payment) {
+            $this->pointPaymentId = null;
+
+            return;
+        }
+
+        try {
+            $payment = app(PointPaymentService::class)->cancel($payment);
+        } catch (MercadoPagoException $e) {
+            Notification::make()->title('No se pudo cancelar')->body($e->getMessage())->warning()->send();
+
+            return;
+        } finally {
+            unset($this->pointPayment);
+        }
+
+        if ($payment->isPaid()) {
+            // Se aprobó justo antes de cancelar: la venta ya está registrada.
+            $this->checkPointPayment();
+
+            return;
+        }
+
+        $this->pointPaymentId = null;
+
+        Notification::make()->title('Cobro cancelado en el posnet')->warning()->send();
+    }
+
+    private function buildSalePayload(): array
+    {
+        $subtotal = $this->getSubtotal();
+        $discountAmount = $this->getDiscountAmount();
+        $promoDiscount = $this->getPromoDiscount();
+
+        return [
+            'payment_method' => $this->paymentMethod,
+            'subtotal' => $subtotal,
+            'discount' => $discountAmount,
+            'promo_discount' => $promoDiscount,
+            'total' => round($subtotal - $discountAmount - $promoDiscount, 2),
+            'notes' => $this->notes,
+            'items' => collect($this->cartItems)
+                ->map(fn (array $item) => collect($item)->only(['product_id', 'name', 'unit', 'unit_price', 'quantity', 'subtotal'])->all())
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function afterSaleRegistered(Sale $sale, ?PointPayment $pointPayment = null): void
+    {
+        $this->lastSaleNumber = $sale->sale_number;
         $this->cartItems = [];
         $this->paymentMethod = '';
         $this->notes = '';
@@ -451,9 +577,19 @@ class CrearVenta extends Page
             EscPosPrint::dispatch($this, $ticket);
         }
 
+        $body = 'El stock fue actualizado automáticamente.';
+
+        if ($pointPayment) {
+            $body = collect([
+                'Cobrado con posnet Mercado Pago',
+                $pointPayment->paymentTypeLabel(),
+                $pointPayment->card_last_digits ? "****{$pointPayment->card_last_digits}" : null,
+            ])->filter()->implode(' · ').'. '.$body;
+        }
+
         Notification::make()
-            ->title("¡Venta {$this->lastSaleNumber} registrada!")
-            ->body('El stock fue actualizado automáticamente.')
+            ->title("¡Venta {$sale->sale_number} registrada!")
+            ->body($body)
             ->success()
             ->persistent()
             ->send();

@@ -82,6 +82,15 @@ class CloseCashRegisterAction
                         ->helperText('No forma parte del arqueo en efectivo.');
                 }
 
+                if ($register && $register->pointSalesTotal() > 0) {
+                    $fields[] = TextInput::make('point_sales_preview')
+                        ->label('Ventas con posnet Mercado Pago')
+                        ->default(CashRegister::formatMoney($register->pointSalesTotal()))
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->helperText('Se acredita en la cuenta de Mercado Pago. No forma parte del arqueo en efectivo.');
+                }
+
                 $fields[] = TextInput::make('closing_amount')
                     ->label('Efectivo contado')
                     ->numeric()

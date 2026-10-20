@@ -28,6 +28,7 @@ class SaleTicketEscPosBuilder
         'cash' => 'Efectivo',
         'transfer' => 'Transferencia',
         'card' => 'Tarjeta',
+        'point' => 'Posnet MP',
     ];
 
     public function build(Sale $sale): string

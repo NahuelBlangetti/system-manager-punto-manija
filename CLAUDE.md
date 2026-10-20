@@ -60,6 +60,7 @@ antes de copiar convenciones.
 - Zonas rojas (`RedZone` + map picker de polígonos).
 - Envíos por distancia (`ShippingPriceCalculator`, `ConfiguracionEnvios`).
 - Rol `Delivery`.
+- Posnet Mercado Pago Point (`PointPayment`, `payment_method=point`).
 - Descuento por cantidad en producto (`discount_min_qty` / `discount_type`).
 
 ### Checklist al clonar
@@ -105,7 +106,8 @@ sección de estado, confirmá contra `app/Filament/Resources`, `app/Models` y
 | Reportes / exportación | ⚠️ Parcial | PDF de catálogo. Sin Excel ni reportes de ventas/caja |
 | Tests | ⚠️ Parcial | Import, caja, zonas rojas, SEO. Falta POS, promociones, envíos, combos |
 | API REST | ❌ No iniciada | `routes/api.php` no existe |
-| Pagos (MercadoPago) | ❌ No implementado | |
+| Posnet Mercado Pago Point | ✅ Completo | N950 en modo PDV vía Orders API; `PointPaymentService`, `ConfiguracionPosnet`, webhook `/webhooks/mercadopago`. Ver `MERCADOPAGO_POINT.md` |
+| Pagos online (MercadoPago) | ❌ No implementado | Checkout del marketplace sigue por WhatsApp |
 
 ⚠️ **Bypass de stock**: `SaleResource::CreateSale` no usa `ComboStockService`.
 El flujo correcto es `CrearVenta`.
@@ -152,7 +154,7 @@ ProductImport
 - `ProductDiscountType`: `%` o monto fijo (descuento por cantidad)
 - `PromotionType`: `percentage` | `two_for_one`
 - `StockMovement.type`: `in|out|adjustment`
-- `Sale.payment_method`: `cash|transfer|card`
+- `Sale.payment_method`: `cash|transfer|card|point` (`point` = posnet MP, no suma al efectivo de caja)
 - `CashRegister.status`: `open|closed`
 - Envío default: base 800 + 300/km, max 15 km, redondeo 50 (override admin)
 
@@ -163,7 +165,8 @@ ProductImport
 - `app/Services/Stock/ComboStockService.php` — stock + movimientos, consciente de combos.
 - `app/Services/Shipping/ShippingPriceCalculator.php` + `ShippingSettings.php`
 - `app/Services/Tickets/SaleTicketEscPosBuilder.php` + `Labels/ProductLabelEscPosBuilder.php`
-- `app/Filament/Pages/CrearVenta.php` — POS real.
+- `app/Filament/Pages/CrearVenta.php` — POS real. Alta de venta en `app/Services/Sales/SaleRegistrar.php`.
+- `app/Services/MercadoPago/PointClient.php` + `PointPaymentService.php` — cobro con posnet; la venta se crea al aprobarse (`PointPayment.sale_payload`).
 - `app/Filament/Pages/ConfiguracionEnvios.php` — tarifas en tabla `settings`.
 - `app/Filament/Support/PolygonMapPicker.php` — polígonos de zonas rojas.
 - `app/Support/EscPosPrint.php`, `MarketplaceSeo.php`
@@ -234,6 +237,9 @@ STORE_HOURS_SUNDAY=Cerrado
 STORE_INSTAGRAM=
 
 GOOGLE_MAPS_API_KEY=
+MERCADOPAGO_ACCESS_TOKEN=
+MERCADOPAGO_WEBHOOK_SECRET=
+MERCADOPAGO_POINT_TERMINAL_ID=
 SHIPPING_BASE_PRICE=800
 SHIPPING_PRICE_PER_KM=300
 SHIPPING_MAX_DISTANCE_KM=15
@@ -267,7 +273,7 @@ Faltan: POS/`CrearVenta`, promociones, cotización de envío, combos, rol Delive
 3. Completar WhatsApp / Instagram / horarios reales.
 4. Reportes de ventas/caja y export Excel/CSV.
 5. API REST (Sanctum).
-6. Integración de pagos (MercadoPago).
+6. Pagos online en el marketplace (MercadoPago Checkout). Devoluciones Point desde el sistema.
 7. Decidir destino de `ScrapeProductos`.
 8. Migrar RBAC a Spatie / Policies.
 

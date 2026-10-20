@@ -315,7 +315,11 @@
                     </div>
                     <div class="px-6 py-4 flex flex-col gap-4">
 
-                        <div class="grid grid-cols-3 gap-2">
+                        <div @class([
+                            'grid gap-2',
+                            'grid-cols-2 sm:grid-cols-4' => $this->pointEnabled,
+                            'grid-cols-3' => ! $this->pointEnabled,
+                        ])>
                             <button
                                 wire:click="$set('paymentMethod', 'cash')"
                                 type="button"
@@ -354,6 +358,21 @@
                                 <x-filament::icon icon="heroicon-o-credit-card" class="h-6 w-6" />
                                 Tarjeta
                             </button>
+
+                            @if ($this->pointEnabled)
+                                <button
+                                    wire:click="$set('paymentMethod', 'point')"
+                                    type="button"
+                                    @class([
+                                        'flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-4 text-sm font-semibold transition focus:outline-none',
+                                        'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 dark:border-primary-600' => $paymentMethod === 'point',
+                                        'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-white/10 dark:bg-white/5 dark:text-gray-300' => $paymentMethod !== 'point',
+                                    ])
+                                >
+                                    <x-filament::icon icon="heroicon-o-device-tablet" class="h-6 w-6" />
+                                    Posnet MP
+                                </button>
+                            @endif
                         </div>
 
                         <textarea
@@ -385,8 +404,13 @@
                         >
                             <span wire:loading.remove wire:target="confirmSale">
                                 <span class="flex items-center justify-center gap-2">
-                                    <x-filament::icon icon="heroicon-o-check-circle" class="h-5 w-5" />
-                                    Confirmar venta · ${{ number_format($this->getTotal(), 2, ',', '.') }}
+                                    @if ($paymentMethod === 'point')
+                                        <x-filament::icon icon="heroicon-o-device-tablet" class="h-5 w-5" />
+                                        Cobrar en posnet · ${{ number_format($this->getTotal(), 2, ',', '.') }}
+                                    @else
+                                        <x-filament::icon icon="heroicon-o-check-circle" class="h-5 w-5" />
+                                        Confirmar venta · ${{ number_format($this->getTotal(), 2, ',', '.') }}
+                                    @endif
                                 </span>
                             </span>
                             <span wire:loading wire:target="confirmSale">
@@ -402,6 +426,7 @@
                                         'cash'     => 'Efectivo',
                                         'transfer' => 'Transferencia',
                                         'card'     => 'Tarjeta',
+                                        'point'    => 'Posnet Mercado Pago',
                                         default    => $paymentMethod,
                                     } }}
                                 </strong>
@@ -430,4 +455,55 @@
 
         </div>
     </div>
+
+    @if ($pointPaymentId && ($pointPayment = $this->pointPayment))
+        <div
+            wire:poll.2s="checkPointPayment"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/60 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="point-payment-title"
+        >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary-500/10 text-primary-600 dark:text-primary-400">
+                    <x-filament::loading-indicator class="h-7 w-7" />
+                </span>
+
+                <h2 id="point-payment-title" class="mt-4 text-lg font-bold text-gray-950 dark:text-white">
+                    Esperando pago en el posnet
+                </h2>
+
+                <p class="mt-1 text-3xl font-extrabold tabular-nums text-gray-950 dark:text-white">
+                    $ {{ number_format((float) $pointPayment->amount, 2, ',', '.') }}
+                </p>
+
+                <p class="mt-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {{ $pointPayment->statusLabel() }}
+                </p>
+
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    El cliente puede pagar con tarjeta, contactless o QR. La venta se registra sola cuando se aprueba.
+                </p>
+
+                @if ($pointError)
+                    <p class="mt-3 rounded-lg bg-warning-50 px-3 py-2 text-xs text-warning-700 dark:bg-warning-950/40 dark:text-warning-300">
+                        {{ $pointError }} — reintentando…
+                    </p>
+                @endif
+
+                <button
+                    wire:click="cancelPointPayment"
+                    wire:loading.attr="disabled"
+                    wire:target="cancelPointPayment"
+                    type="button"
+                    class="mt-6 w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-gray-500/20 dark:border-white/20 dark:text-gray-200 dark:hover:bg-white/5"
+                >
+                    Cancelar cobro
+                </button>
+                <p class="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                    Si el posnet ya muestra el cobro al cliente, cancelalo desde el posnet.
+                </p>
+            </div>
+        </div>
+    @endif
 </x-filament-panels::page>

@@ -59,6 +59,11 @@ class CashRegister extends Model
         return $this->salesTotalByPaymentMethod('card');
     }
 
+    public function pointSalesTotal(): float
+    {
+        return $this->salesTotalByPaymentMethod('point');
+    }
+
     public function salesTotalByPaymentMethod(string $paymentMethod): float
     {
         return (float) $this->sales()

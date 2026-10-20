@@ -61,4 +61,21 @@ return [
         'ticket_printer' => env('PRINT_AGENT_TICKET_PRINTER', 'POS-80C'),
     ],
 
+    'mercadopago' => [
+        // Access Token de PRODUCCIÓN de la aplicación de Mercado Pago de la
+        // cuenta dueña del posnet (Tus integraciones → Credenciales).
+        'access_token' => env('MERCADOPAGO_ACCESS_TOKEN'),
+        // Clave secreta de Webhooks (Tus integraciones → Webhooks). Si está
+        // vacía no se valida la firma x-signature.
+        'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
+        // Terminal por defecto (ej. NEWLAND_N950__N950NCB801293324). Se puede
+        // pisar desde el panel en "Posnet Mercado Pago".
+        'point_terminal_id' => env('MERCADOPAGO_POINT_TERMINAL_ID'),
+        // Tiempo que el cobro queda disponible en el posnet (ISO 8601).
+        'point_expiration' => env('MERCADOPAGO_POINT_EXPIRATION', 'PT5M'),
+        // no_ticket | seller_ticket | full_ticket (impresión del posnet).
+        'point_print_on_terminal' => env('MERCADOPAGO_POINT_PRINT', 'no_ticket'),
+        'base_url' => env('MERCADOPAGO_BASE_URL', 'https://api.mercadopago.com'),
+    ],
+
 ];
