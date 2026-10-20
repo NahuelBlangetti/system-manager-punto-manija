@@ -87,6 +87,7 @@ class CashRegistersTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('opened_at', 'desc')
             ->filters([
                 //
             ])

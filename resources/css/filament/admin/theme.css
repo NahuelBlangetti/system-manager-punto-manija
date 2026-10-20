@@ -102,3 +102,214 @@
         justify-content: center;
     }
 }
+
+/* panel-admin-mobile: un solo scroll de página */
+html.fi,
+html.fi body.fi-body {
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow-x: clip;
+    overflow-y: auto;
+}
+
+.fi-layout,
+.fi-main-ctn,
+.fi-main,
+.fi-page,
+.fi-page-main,
+.fi-page-header-main-ctn,
+.fi-page-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.fi-page-content {
+    flex: none;
+}
+
+.fi-ta-ctn,
+.fi-ta-ctn:not(.fi-ta-ctn-with-header),
+.fi-section,
+.fi-section-content,
+.fi-section-content-ctn,
+.fi-wi-widget,
+.fi-wi-table {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.fi-ta-content-ctn {
+    max-height: none !important;
+    overflow-x: auto;
+    overflow-y: visible !important;
+}
+
+@media (min-width: 1024px) {
+    .fi-sidebar,
+    .fi-body-has-topbar .fi-sidebar {
+        position: relative !important;
+        top: auto !important;
+        height: auto !important;
+        min-height: calc(100dvh - 4rem);
+        align-self: stretch;
+    }
+
+    .fi-sidebar-nav {
+        overflow: visible !important;
+        scrollbar-gutter: auto;
+    }
+}
+
+
+/* panel-admin-mobile: el celular entra en el ancho y no hace zoom */
+@media (max-width: 1023px) {
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        touch-action: manipulation;
+    }
+
+    input,
+    select,
+    textarea,
+    .fi-input,
+    .fi-select-input,
+    .fi-fo-textarea {
+        font-size: 16px !important;
+    }
+
+    .fi-main-ctn {
+        width: 100% !important;
+        max-width: 100%;
+    }
+
+    .fi-main {
+        width: auto;
+        max-width: calc(100% - 0.75rem);
+        margin: 0.35rem;
+        padding: 0.6rem 0.7rem 0.85rem !important;
+    }
+
+    .fi-simple-main {
+        width: min(100% - 1.5rem, 28rem);
+        max-width: calc(100vw - 1.5rem);
+        margin-inline: auto;
+    }
+
+    .fi-topbar {
+        gap: 0.35rem;
+        padding-inline: 0.55rem;
+    }
+
+    .fi-topbar-end,
+    .fi-global-search,
+    .fi-global-search-ctn,
+    .fi-global-search-field {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .fi-header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .fi-header-actions,
+    .fi-header-actions .fi-ac,
+    .fi-ta-header-toolbar,
+    .fi-pagination {
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
+    .fi-modal-window,
+    .fi-dropdown-panel {
+        max-width: calc(100vw - 1rem);
+    }
+
+    .fi-page,
+    .fi-fo-field-wrp,
+    .fi-input-wrp {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .fi-page .overflow-x-auto {
+        max-width: 100%;
+    }
+
+    .fi-ta-content-ctn {
+        overflow-x: clip !important;
+    }
+
+    .fi-ta-table {
+        display: block;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .fi-ta-table > thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .fi-ta-table > tbody {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fi-ta-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem 0.7rem;
+        padding: 0.75rem 0.05rem;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+    }
+
+    .fi-ta-cell,
+    .fi-ta-col,
+    .fi-ta-text {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        padding: 0 !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    .fi-ta-selection-cell,
+    .fi-ta-cell-image {
+        flex: 0 0 auto;
+    }
+
+    .fi-ta-cell[data-mobile-title] {
+        flex: 1 1 8rem;
+        font-size: 0.98rem;
+        font-weight: 800;
+    }
+
+    .fi-ta-cell:has(.fi-ta-actions) {
+        margin-inline-start: auto;
+    }
+
+    .fi-ta-cell[data-label]:not(.fi-ta-selection-cell):not(.fi-ta-cell-image):not([data-mobile-title]):not(:has(.fi-ta-actions))::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.05rem;
+        font-size: 0.65rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+}
