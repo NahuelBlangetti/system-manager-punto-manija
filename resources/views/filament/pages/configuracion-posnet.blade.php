@@ -52,7 +52,7 @@
             <x-slot name="description">
                 El posnet tiene que estar en modo PDV para recibir cobros del sistema. Después de activarlo, reinicialo.
             </x-slot>
-            <x-slot name="headerEnd">
+            <x-slot name="afterHeader">
                 <x-filament::button
                     wire:click="loadTerminals"
                     icon="heroicon-o-arrow-path"

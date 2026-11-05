@@ -315,7 +315,8 @@ class MercadoPagoPointFlowTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/posnet-mercado-pago')
             ->assertOk()
-            ->assertSee(self::TERMINAL);
+            ->assertSee(self::TERMINAL)
+            ->assertSee('wire:click="loadTerminals"', false);
 
         $product = $this->product();
 
