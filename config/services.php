@@ -68,8 +68,9 @@ return [
         // Clave secreta de Webhooks (Tus integraciones → Webhooks). Si está
         // vacía no se valida la firma x-signature.
         'webhook_secret' => env('MERCADOPAGO_WEBHOOK_SECRET'),
-        // Terminal por defecto (ej. NEWLAND_N950__N950NCB801293324). Se puede
-        // pisar desde el panel en "Posnet Mercado Pago".
+        // Terminal por defecto (ej. PAX_A910__SMARTPOS1495357742 o
+        // NEWLAND_N950__N950NCB801293324). Se puede pisar desde el panel en
+        // "Posnet Mercado Pago".
         'point_terminal_id' => env('MERCADOPAGO_POINT_TERMINAL_ID'),
         // Tiempo que el cobro queda disponible en el posnet (ISO 8601).
         'point_expiration' => env('MERCADOPAGO_POINT_EXPIRATION', 'PT5M'),

@@ -51,7 +51,7 @@ class ConfiguracionPosnet extends Page
 
     public function getSubheading(): ?string
     {
-        return 'Vinculá el posnet Point (N950) para cobrar las ventas del POS con tarjeta, contactless o QR.';
+        return 'Vinculá el posnet Point Smart (A910 o N950) para cobrar las ventas del POS con tarjeta, contactless o QR.';
     }
 
     #[Computed]
@@ -101,7 +101,7 @@ class ConfiguracionPosnet extends Page
         if (empty($this->terminals)) {
             Notification::make()
                 ->title('No hay posnets vinculados')
-                ->body('Vinculá el N950 a la cuenta desde la app de Mercado Pago (Tu negocio → Point) y volvé a buscar.')
+                ->body('Vinculá el posnet (A910 o N950) a la cuenta desde la app de Mercado Pago (Tu negocio → Point) y volvé a buscar.')
                 ->warning()
                 ->send();
         }

@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
 /**
- * Cliente mínimo de la Orders API de Mercado Pago para posnets Point
- * (N950 / Point Smart) en modo PDV.
+ * Cliente mínimo de la Orders API de Mercado Pago para posnets Point Smart
+ * en modo PDV. Mismo flujo para los dos hardwares del Point Smart:
+ * PAX A910 (PAX_A910__SMARTPOS...) y Newland N950 (NEWLAND_N950__...).
  *
  * @see https://www.mercadopago.com.ar/developers/es/docs/mp-point/overview
  */
@@ -22,6 +23,21 @@ class PointClient
     public function isConfigured(): bool
     {
         return filled(config('services.mercadopago.access_token'));
+    }
+
+    /**
+     * Marca y modelo legibles a partir del id de terminal de Mercado Pago:
+     * "PAX_A910__SMARTPOS1495357742" → "PAX A910".
+     */
+    public static function terminalModel(?string $terminalId): ?string
+    {
+        if (! filled($terminalId) || ! str_contains($terminalId, '__')) {
+            return null;
+        }
+
+        $model = trim(str_replace('_', ' ', Str::before($terminalId, '__')));
+
+        return $model !== '' ? $model : null;
     }
 
     public function terminalId(): ?string

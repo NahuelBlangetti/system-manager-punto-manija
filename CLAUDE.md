@@ -106,7 +106,7 @@ sección de estado, confirmá contra `app/Filament/Resources`, `app/Models` y
 | Reportes / exportación | ⚠️ Parcial | PDF de catálogo. Sin Excel ni reportes de ventas/caja |
 | Tests | ⚠️ Parcial | Import, caja, zonas rojas, SEO. Falta POS, promociones, envíos, combos |
 | API REST | ❌ No iniciada | `routes/api.php` no existe |
-| Posnet Mercado Pago Point | ✅ Completo | N950 en modo PDV vía Orders API; `PointPaymentService`, `ConfiguracionPosnet`, webhook `/webhooks/mercadopago`. Ver `MERCADOPAGO_POINT.md` |
+| Posnet Mercado Pago Point | ✅ Completo | Point Smart (PAX A910 o Newland N950) en modo PDV vía Orders API; `PointPaymentService`, `ConfiguracionPosnet`, webhook `/webhooks/mercadopago`. Ver `MERCADOPAGO_POINT.md` |
 | Pagos online (MercadoPago) | ❌ No implementado | Checkout del marketplace sigue por WhatsApp |
 
 ⚠️ **Bypass de stock**: `SaleResource::CreateSale` no usa `ComboStockService`.

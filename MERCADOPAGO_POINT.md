@@ -1,12 +1,24 @@
-# Posnet Mercado Pago Point (N950)
+# Posnet Mercado Pago Point Smart (A910 / N950)
 
 El POS (`/admin/nueva-venta`) envía el total al posnet, el cliente paga
 (tarjeta, contactless o QR) y la venta queda registrada sola con medio de pago
 **Posnet MP**. Usa la Orders API de Mercado Pago en modo PDV.
 
+## Modelos soportados
+
+El Point Smart existe en dos hardwares y los dos usan el mismo flujo; no hay
+que cambiar código para pasar de uno a otro:
+
+| Equipo | Id de terminal en Mercado Pago |
+|---|---|
+| PAX **A910** | `PAX_A910__SMARTPOS1234567890` |
+| Newland **N950** | `NEWLAND_N950__N950NCB801293324` |
+
+En el panel, cada posnet muestra su marca y modelo junto al id.
+
 ## Puesta en marcha (una sola vez)
 
-1. **Vincular el N950 a la cuenta** de Mercado Pago del local desde la app
+1. **Vincular el posnet a la cuenta** de Mercado Pago del local desde la app
    (Tu negocio → Point). Tiene que tener internet (WiFi o chip).
 2. **Crear una aplicación** en <https://www.mercadopago.com.ar/developers/panel/app>
    (producto: *Pagos presenciales / Point*) con la misma cuenta.
@@ -16,7 +28,7 @@ El POS (`/admin/nueva-venta`) envía el total al posnet, el cliente paga
    ```
    y correr `php artisan migrate && php artisan config:clear`.
 4. En el panel: **Administración → Posnet Mercado Pago → Buscar posnets**.
-   - **Activar modo PDV** en el N950 y reiniciarlo.
+   - **Activar modo PDV** en el posnet y reiniciarlo.
    - **Usar este** para dejarlo como posnet del POS.
 5. (Opcional, recomendado si el sistema está publicado en internet) En la
    aplicación de MP → *Webhooks*: URL `https://<dominio>/webhooks/mercadopago`,
@@ -28,7 +40,7 @@ El POS (`/admin/nueva-venta`) envía el total al posnet, el cliente paga
 ## Cómo se cobra
 
 1. Cargar productos → método **Posnet MP** → **Cobrar en posnet**.
-2. El POS queda en "Esperando pago en el posnet" y el N950 muestra el monto.
+2. El POS queda en "Esperando pago en el posnet" y el posnet muestra el monto.
 3. Aprobado → se registra la venta (stock, caja, ticket). Rechazado, vencido
    (5 min por defecto) o cancelado → no se registra nada y el carrito queda
    para reintentar u otro medio.
@@ -51,7 +63,7 @@ notas de la venta y en la tabla `point_payments`, visible en la página
 | `MERCADOPAGO_WEBHOOK_SECRET` | — | Valida la firma `x-signature` |
 | `MERCADOPAGO_POINT_TERMINAL_ID` | — | Alternativa a elegirlo en el panel |
 | `MERCADOPAGO_POINT_EXPIRATION` | `PT5M` | Vencimiento del cobro en el posnet |
-| `MERCADOPAGO_POINT_PRINT` | `no_ticket` | `seller_ticket` / `full_ticket` para que imprima el N950 |
+| `MERCADOPAGO_POINT_PRINT` | `no_ticket` | `seller_ticket` / `full_ticket` para que imprima el posnet |
 
 ## Pendiente / límites
 

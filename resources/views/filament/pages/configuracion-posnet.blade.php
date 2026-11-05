@@ -17,6 +17,11 @@
                 </div>
                 <div>
                     <dt class="text-gray-500 dark:text-gray-400">Posnet en uso</dt>
+                    @if ($currentModel = \App\Services\MercadoPago\PointClient::terminalModel($this->currentTerminalId))
+                        <dd class="mt-1">
+                            <x-filament::badge color="info">{{ $currentModel }}</x-filament::badge>
+                        </dd>
+                    @endif
                     <dd class="mt-1 break-all font-mono text-xs text-gray-900 dark:text-gray-100">
                         {{ $this->currentTerminalId ?? 'Ninguno seleccionado' }}
                     </dd>
@@ -68,6 +73,9 @@
                             <div class="min-w-0">
                                 <p class="break-all font-mono text-sm text-gray-900 dark:text-gray-100">{{ $terminal['id'] }}</p>
                                 <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    @if ($terminalModel = \App\Services\MercadoPago\PointClient::terminalModel($terminal['id']))
+                                        <x-filament::badge color="info">{{ $terminalModel }}</x-filament::badge>
+                                    @endif
                                     <x-filament::badge :color="($terminal['operating_mode'] ?? null) === 'PDV' ? 'success' : 'warning'">
                                         Modo {{ $terminal['operating_mode'] ?? 'desconocido' }}
                                     </x-filament::badge>

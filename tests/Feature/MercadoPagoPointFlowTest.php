@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\ConfiguracionPosnet;
 use App\Filament\Pages\CrearVenta;
 use App\Models\CashRegister;
 use App\Models\Category;
@@ -9,6 +10,7 @@ use App\Models\PointPayment;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\MercadoPago\PointClient;
 use App\Services\MercadoPago\PointPaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -248,6 +250,62 @@ class MercadoPagoPointFlowTest extends TestCase
             'x-signature' => "ts={$ts},v1={$hash}",
             'x-request-id' => 'req-1',
         ])->assertOk();
+    }
+
+    public function test_a910_terminal_can_be_found_switched_to_pdv_selected_and_charged(): void
+    {
+        $a910 = 'PAX_A910__SMARTPOS1495357742';
+        $admin = User::factory()->admin()->create();
+        $this->openRegister($admin);
+        $product = $this->product();
+        $mode = 'STANDALONE';
+
+        Http::fake([
+            'api.mercadopago.com/terminals/v1/list*' => function () use (&$mode, $a910) {
+                return Http::response(['data' => ['terminals' => [
+                    ['id' => $a910, 'pos_id' => 1, 'store_id' => '1', 'external_pos_id' => 'CAJA1', 'operating_mode' => $mode],
+                ]]]);
+            },
+            'api.mercadopago.com/terminals/v1/setup' => function (Request $request) use (&$mode) {
+                $mode = $request['terminals'][0]['operating_mode'];
+
+                return Http::response(['terminals' => $request['terminals']]);
+            },
+            'api.mercadopago.com/v1/orders' => fn () => Http::response($this->order('created'), 201),
+        ]);
+
+        Livewire::actingAs($admin)->test(ConfiguracionPosnet::class)
+            ->call('loadTerminals')
+            ->assertSee($a910)
+            ->assertSee('PAX A910')
+            ->assertSee('Modo STANDALONE')
+            ->call('activatePdvMode', $a910)
+            ->assertSee('Modo PDV')
+            ->call('useTerminal', $a910);
+
+        Http::assertSent(fn (Request $request) => $request->method() === 'PATCH'
+            && str_ends_with($request->url(), '/terminals/v1/setup')
+            && $request['terminals'] === [['id' => $a910, 'operating_mode' => 'PDV']]);
+
+        $this->assertSame($a910, app(PointClient::class)->terminalId());
+
+        Livewire::actingAs($admin)->test(CrearVenta::class)
+            ->call('addToCart', $product->id)
+            ->set('paymentMethod', 'point')
+            ->set('printTicket', false)
+            ->call('confirmSale');
+
+        $this->assertSame($a910, PointPayment::sole()->terminal_id);
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://api.mercadopago.com/v1/orders'
+            && $request['config']['point']['terminal_id'] === $a910);
+    }
+
+    public function test_terminal_model_is_read_from_terminal_id(): void
+    {
+        $this->assertSame('PAX A910', PointClient::terminalModel('PAX_A910__SMARTPOS1495357742'));
+        $this->assertSame('NEWLAND N950', PointClient::terminalModel('NEWLAND_N950__N950NCB801293324'));
+        $this->assertNull(PointClient::terminalModel('SIN-FORMATO'));
+        $this->assertNull(PointClient::terminalModel(null));
     }
 
     public function test_pages_render_with_point_enabled(): void
