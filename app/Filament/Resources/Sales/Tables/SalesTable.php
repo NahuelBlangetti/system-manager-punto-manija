@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Sales\Tables;
 
+use App\Filament\Resources\Sales\Actions\FacturarArcaAction;
+use App\Filament\Resources\Sales\Actions\PrintFacturaAction;
 use App\Filament\Resources\Sales\Actions\PrintTicketAction;
 use App\Models\Product;
 use App\Services\Stock\ComboStockService;
@@ -86,6 +88,8 @@ class SalesTable
             ])
             ->recordActions([
                 PrintTicketAction::make(),
+                PrintFacturaAction::make(),
+                FacturarArcaAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([

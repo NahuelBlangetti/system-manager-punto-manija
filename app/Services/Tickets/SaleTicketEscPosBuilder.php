@@ -16,13 +16,13 @@ class SaleTicketEscPosBuilder
      */
     private const WIDTH = 32;
 
-    private const BOLD = 8;
+    protected const BOLD = 8;
 
-    private const BOLD_TALL = 24; // negrita + doble alto, sin duplicar ancho
+    protected const BOLD_TALL = 24; // negrita + doble alto, sin duplicar ancho
 
-    private const ESC = "\x1B";
+    protected const ESC = "\x1B";
 
-    private const GS = "\x1D";
+    protected const GS = "\x1D";
 
     private const PAYMENT_LABELS = [
         'cash' => 'Efectivo',
@@ -66,8 +66,7 @@ class SaleTicketEscPosBuilder
         $ticket .= $this->separator();
 
         $ticket .= "\n";
-        $paymentLabel = self::PAYMENT_LABELS[$sale->payment_method] ?? $sale->payment_method;
-        $ticket .= $this->sanitize('Medio de pago: '.$paymentLabel)."\n";
+        $ticket .= $this->sanitize('Medio de pago: '.$this->paymentLabel((string) $sale->payment_method))."\n";
         $ticket .= "\n";
         $ticket .= $this->centered('¡Gracias por su compra!');
         $ticket .= "\n\n\n";
@@ -83,7 +82,12 @@ class SaleTicketEscPosBuilder
      * linea aparte solo para el detalle de cantidad/precio unitario (que
      * ademas es redundante cuando la cantidad es 1).
      */
-    private function itemLine(SaleItem $item): string
+    protected function paymentLabel(string $method): string
+    {
+        return self::PAYMENT_LABELS[$method] ?? $method;
+    }
+
+    protected function itemLine(SaleItem $item): string
     {
         $qty = (float) $item->quantity;
         $qtyLabel = $this->formatNumber($qty);
@@ -156,7 +160,7 @@ class SaleTicketEscPosBuilder
         return $lines === [] ? [''] : $lines;
     }
 
-    private function totalLine(string $label, float $amount): string
+    protected function totalLine(string $label, float $amount): string
     {
         $right = $this->formatNumber($amount);
         $label = $this->sanitize($label);
@@ -171,7 +175,7 @@ class SaleTicketEscPosBuilder
      * ancho de línea, provocando cortes de palabra. Se translitera todo el
      * texto a ASCII antes de mandarlo a la impresora.
      */
-    private function sanitize(string $text): string
+    protected function sanitize(string $text): string
     {
         static $map = [
             'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
@@ -194,7 +198,7 @@ class SaleTicketEscPosBuilder
      * imprimiendo los bytes del comando como texto literal en vez de
      * ejecutarlo. Envuelve el texto si no entra en el ancho del ticket.
      */
-    private function centered(string $text): string
+    protected function centered(string $text): string
     {
         $out = '';
 
@@ -206,7 +210,7 @@ class SaleTicketEscPosBuilder
         return $out;
     }
 
-    private function separator(): string
+    protected function separator(): string
     {
         return str_repeat('-', self::WIDTH)."\n";
     }

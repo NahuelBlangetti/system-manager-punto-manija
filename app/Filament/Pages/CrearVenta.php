@@ -10,11 +10,14 @@ use App\Models\Product;
 use App\Models\Promotion;
 use App\Models\Sale;
 use App\Models\User;
+use App\Services\Arca\ArcaException;
+use App\Services\Arca\FacturarVenta;
 use App\Services\MercadoPago\MercadoPagoException;
 use App\Services\MercadoPago\PointClient;
 use App\Services\MercadoPago\PointPaymentService;
 use App\Services\Sales\SaleRegistrar;
 use App\Services\Stock\ComboStockService;
+use App\Services\Tickets\FacturaTicketEscPosBuilder;
 use App\Services\Tickets\SaleTicketEscPosBuilder;
 use App\Support\EscPosPrint;
 use BackedEnum;
@@ -63,7 +66,15 @@ class CrearVenta extends Page
 
     public bool $printTicket = true;
 
+    public bool $facturaArca = false;
+
     public ?string $lastSaleNumber = null;
+
+    public ?int $saleId = null;
+
+    public ?string $facturaNumero = null;
+
+    public ?string $facturaError = null;
 
     /** Cobro en curso en el posnet Mercado Pago Point (bloquea el POS). */
     public ?int $pointPaymentId = null;
@@ -150,6 +161,18 @@ class CrearVenta extends Page
     public function hasCashRegisterOpen(): bool
     {
         return CashRegister::where('status', 'open')->exists();
+    }
+
+    #[Computed]
+    public function arcaDisponible(): bool
+    {
+        return FacturarVenta::disponible();
+    }
+
+    #[Computed]
+    public function arcaMensaje(): ?string
+    {
+        return FacturarVenta::mensajeConfiguracion();
     }
 
     #[Computed]
@@ -374,6 +397,9 @@ class CrearVenta extends Page
         $this->discountType = 'fixed';
         $this->discountValue = '';
         $this->lastSaleNumber = null;
+        $this->saleId = null;
+        $this->facturaNumero = null;
+        $this->facturaError = null;
     }
 
     public function confirmSale(): void
@@ -543,6 +569,28 @@ class CrearVenta extends Page
         Notification::make()->title('Cobro cancelado en el posnet')->warning()->send();
     }
 
+    /**
+     * Emite (o reintenta) la Factura C de la venta recién cobrada y la manda a imprimir.
+     */
+    public function facturar(): void
+    {
+        $sale = $this->saleId ? Sale::find($this->saleId) : null;
+
+        if (! $sale || ! $this->emitirFactura($sale)) {
+            return;
+        }
+
+        if ($this->printTicket) {
+            $factura = $sale->factura()->first();
+
+            if ($factura) {
+                EscPosPrint::dispatch($this, app(FacturaTicketEscPosBuilder::class)->buildFactura($factura));
+            }
+        }
+
+        $this->saleId = null;
+    }
+
     private function buildSalePayload(): array
     {
         $subtotal = $this->getSubtotal();
@@ -556,6 +604,7 @@ class CrearVenta extends Page
             'promo_discount' => $promoDiscount,
             'total' => round($subtotal - $discountAmount - $promoDiscount, 2),
             'notes' => $this->notes,
+            'factura_arca' => $this->facturaArca && FacturarVenta::disponible(),
             'items' => collect($this->cartItems)
                 ->map(fn (array $item) => collect($item)->only(['product_id', 'name', 'unit', 'unit_price', 'quantity', 'subtotal'])->all())
                 ->values()
@@ -565,19 +614,49 @@ class CrearVenta extends Page
 
     private function afterSaleRegistered(Sale $sale, ?PointPayment $pointPayment = null): void
     {
-        $this->lastSaleNumber = $sale->sale_number;
+        $quiereFactura = $pointPayment
+            ? (bool) ($pointPayment->sale_payload['factura_arca'] ?? false)
+            : $this->facturaArca;
+
+        $this->facturaNumero = null;
+        $this->facturaError = null;
+        $conFactura = false;
+
+        if ($quiereFactura && FacturarVenta::disponible()) {
+            $conFactura = $this->emitirFactura($sale);
+        }
+
+        if ($conFactura && $this->printTicket) {
+            $factura = $sale->factura()->first();
+
+            if ($factura) {
+                EscPosPrint::dispatch($this, app(FacturaTicketEscPosBuilder::class)->buildFactura($factura));
+            }
+        } elseif ($this->printTicket) {
+            EscPosPrint::dispatch($this, app(SaleTicketEscPosBuilder::class)->build($sale));
+        }
+
+        $error = $this->facturaError;
+        $numero = $sale->sale_number;
+        $printTicket = $this->printTicket;
+
+        $this->lastSaleNumber = $numero;
         $this->cartItems = [];
         $this->paymentMethod = '';
         $this->notes = '';
         $this->discountType = 'fixed';
         $this->discountValue = '';
+        $this->saleId = $error ? $sale->id : null;
+        $this->printTicket = $printTicket;
+        $this->facturaArca = (bool) $error;
 
-        if ($this->printTicket) {
-            $ticket = app(SaleTicketEscPosBuilder::class)->build($sale);
-            EscPosPrint::dispatch($this, $ticket);
+        if ($error) {
+            return;
         }
 
-        $body = 'El stock fue actualizado automáticamente.';
+        $body = $conFactura && $this->facturaNumero
+            ? "Factura C {$this->facturaNumero} autorizada por ARCA."
+            : 'El stock fue actualizado automáticamente.';
 
         if ($pointPayment) {
             $body = collect([
@@ -588,10 +667,39 @@ class CrearVenta extends Page
         }
 
         Notification::make()
-            ->title("¡Venta {$sale->sale_number} registrada!")
+            ->title("¡Venta {$numero} registrada!")
             ->body($body)
             ->success()
             ->persistent()
             ->send();
+    }
+
+    /**
+     * Pide el CAE a ARCA. Si falla, la venta queda cobrada y se puede reintentar.
+     */
+    private function emitirFactura(Sale $sale): bool
+    {
+        try {
+            $factura = app(FacturarVenta::class)->handle($sale, Auth::id());
+        } catch (\Throwable $e) {
+            if (! $e instanceof ArcaException) {
+                report($e);
+            }
+
+            $this->facturaError = $e instanceof ArcaException ? $e->getMessage() : 'Error inesperado al facturar.';
+            Notification::make()
+                ->title('Venta cobrada, sin factura de ARCA')
+                ->body($this->facturaError.' Podés reintentar desde esta pantalla.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return false;
+        }
+
+        $this->facturaNumero = $factura->numeroCompleto();
+        $this->facturaError = null;
+
+        return true;
     }
 }

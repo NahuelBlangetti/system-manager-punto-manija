@@ -391,6 +391,21 @@
                             Imprimir comprobante
                         </label>
 
+                        @if ($this->arcaDisponible)
+                            <label class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    wire:model="facturaArca"
+                                    class="fi-checkbox-input rounded border-gray-300 text-primary-600 shadow-sm focus:ring-primary-500 dark:border-white/20 dark:bg-white/5"
+                                />
+                                Factura ARCA (Factura C)
+                            </label>
+                        @elseif ($this->arcaMensaje)
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ $this->arcaMensaje }}
+                            </p>
+                        @endif
+
                         <button
                             wire:click="confirmSale"
                             wire:loading.attr="disabled"
@@ -446,8 +461,24 @@
                                 ¡Venta {{ $lastSaleNumber }} registrada!
                             </p>
                             <p class="text-xs text-success-600 dark:text-success-400">
-                                Stock actualizado automáticamente.
+                                @if ($facturaNumero)
+                                    Factura C {{ $facturaNumero }} autorizada por ARCA.
+                                @elseif ($facturaError)
+                                    {{ $facturaError }}
+                                @else
+                                    Stock actualizado automáticamente.
+                                @endif
                             </p>
+                            @if ($facturaError && $saleId)
+                                <button
+                                    type="button"
+                                    wire:click="facturar"
+                                    wire:loading.attr="disabled"
+                                    class="mt-2 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-500"
+                                >
+                                    Reintentar factura ARCA
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>

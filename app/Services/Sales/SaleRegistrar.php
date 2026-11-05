@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
  *   'payment_method' => 'cash|transfer|card|point',
  *   'subtotal' => float, 'discount' => float, 'promo_discount' => float,
  *   'total' => float, 'notes' => ?string,
+ *   'factura_arca' => bool, // lo conserva el POS para emitir la factura; acá no se usa
  *   'items' => [['product_id', 'name', 'unit', 'unit_price', 'quantity', 'subtotal'], ...],
  * ]
  */

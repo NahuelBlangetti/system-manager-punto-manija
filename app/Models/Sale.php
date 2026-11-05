@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -59,6 +60,19 @@ class Sale extends Model
     public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function comprobantes(): HasMany
+    {
+        return $this->hasMany(Comprobante::class);
+    }
+
+    /** Factura C autorizada por ARCA, si existe. */
+    public function factura(): HasOne
+    {
+        return $this->hasOne(Comprobante::class)
+            ->where('tipo', Comprobante::FACTURA_C)
+            ->where('estado', Comprobante::AUTORIZADO);
     }
 
     public function stockMovements(): MorphMany

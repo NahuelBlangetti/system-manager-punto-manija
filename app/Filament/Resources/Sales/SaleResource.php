@@ -62,7 +62,7 @@ class SaleResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        $query = parent::getEloquentQuery()->with('factura');
 
         // El empleado solo ve las ventas que él mismo registró.
         $user = Auth::user();
